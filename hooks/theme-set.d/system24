@@ -1,0 +1,184 @@
+#!/bin/bash
+# Omarchy theme-set hook: keep refact0r/system24's Discord style, but drive its
+# colours from the active Omarchy theme.
+#
+# Runs after every `omarchy theme set` (theme slug in $1). Writes
+# omarchy-system24.theme.css into every Vencord/Vesktop themes dir:
+#   - @import of the upstream system24 build (unchanged style)
+#   - system24's structural `body {}` option block (upstream defaults, editable)
+#   - a `:root {}` colour block generated from the theme's colors.toml
+# Vencord watches the themes directory, so the retint lands live — no restart.
+#
+# Enable it once in Vencord/Vesktop settings (Themes tab) alongside or instead
+# of any other Discord theme; two full themes will fight, so pick one.
+#
+# Installed copy lives in ~/.config/omarchy/hooks/theme-set.d/system24.
+
+set -uo pipefail
+
+COLORS="$HOME/.local/state/omarchy/current/theme/colors.toml"
+THEME_FILE="omarchy-system24.theme.css"
+[ -r "$COLORS" ] || exit 0
+
+col() {
+  sed -n "s/^$1[[:space:]]*=[[:space:]]*\"\{0,1\}\(#[0-9A-Fa-f]\{6\}\).*/\1/p" "$COLORS" | head -n1
+}
+MODE=$(sed -n 's/^mode[[:space:]]*=[[:space:]]*"\{0,1\}\([a-z]*\).*/\1/p' "$COLORS" | head -n1)
+[ -n "$MODE" ] || MODE=dark
+
+BG=$(col background);         [ -n "$BG" ] || BG="#101315"
+FG=$(col foreground);         [ -n "$FG" ] || FG="#cacccc"
+FG_HI=$(col bright_foreground); [ -n "$FG_HI" ] || FG_HI="$FG"
+ACCENT=$(col accent);         [ -n "$ACCENT" ] || ACCENT="$FG"
+RED=$(col bright_red);        [ -n "$RED" ] || RED=$(col red)
+[ -n "$RED" ] || RED="$ACCENT"
+GREEN=$(col green);           [ -n "$GREEN" ] || GREEN="$ACCENT"
+YELLOW=$(col yellow);         [ -n "$YELLOW" ] || YELLOW="$ACCENT"
+BLUE=$(col blue);             [ -n "$BLUE" ] || BLUE="$ACCENT"
+MAGENTA=$(col magenta);       [ -n "$MAGENTA" ] || MAGENTA="$ACCENT"
+
+# in light mode, "mix toward white/black" for ramps flips
+if [ "$MODE" = "light" ]; then LTN=black; DKN=white; else LTN=white; DKN=black; fi
+
+ramp() { # $1 base color, $2 var prefix  ->  <prefix>-1..5
+  local c="$1" p="$2"
+  printf '  %s-1: color-mix(in oklab, %s, %s 24%%);\n' "$p" "$c" "$LTN"
+  printf '  %s-2: color-mix(in oklab, %s, %s 12%%);\n' "$p" "$c" "$LTN"
+  printf '  %s-3: %s;\n' "$p" "$c"
+  printf '  %s-4: color-mix(in oklab, %s, %s 12%%);\n' "$p" "$c" "$DKN"
+  printf '  %s-5: color-mix(in oklab, %s, %s 24%%);\n' "$p" "$c" "$DKN"
+}
+
+gen() {
+  cat <<HEADER
+/**
+ * @name omarchy-system24
+ * @description system24 (refact0r) — tui-style Discord, recoloured from the active Omarchy theme.
+ * @author refact0r (style), omarchy theme-set hook (colours)
+ * @version 2.1.0
+ * @website https://github.com/refact0r/system24
+ * @source https://github.com/refact0r/system24/blob/master/theme/system24.theme.css
+**/
+
+/* Upstream style, unchanged. */
+@import url('https://refact0r.github.io/system24/build/system24.css');
+
+/* system24 structural options — upstream defaults. Edit these to taste; the
+   hook never rewrites this block, only the :root colours below. */
+body {
+    --font: 'DM Mono';
+    --code-font: 'DM Mono';
+    font-weight: 300;
+    letter-spacing: -0.05ch;
+
+    --gap: 12px;
+    --divider-thickness: 4px;
+    --border-thickness: 2px;
+    --border-hover-transition: 0.2s ease;
+
+    --animations: on;
+    --list-item-transition: 0.2s ease;
+    --dms-icon-svg-transition: 0.4s ease;
+
+    --top-bar-height: var(--gap);
+    --top-bar-button-position: titlebar;
+    --top-bar-title-position: off;
+    --subtle-top-bar-title: off;
+
+    --custom-window-controls: off;
+    --window-control-size: 14px;
+
+    --custom-dms-icon: off;
+    --custom-dms-background: off;
+
+    --background-image: off;
+
+    --transparency-tweaks: off;
+    --remove-bg-layer: off;
+    --panel-blur: off;
+    --blur-amount: 12px;
+    --bg-floating: var(--bg-3);
+
+    --small-user-panel: on;
+
+    --unrounding: on;
+    --round-pfp: off;
+    --remove-pfp-decor: off;
+
+    --custom-spotify-bar: on;
+    --ascii-titles: on;
+    --ascii-loader: system24;
+
+    --panel-labels: on;
+    --label-color: var(--text-muted);
+    --label-font-weight: 500;
+}
+
+/* Colours — generated from ~/.local/state/omarchy/current/theme/colors.toml.
+   Regenerated on every \`omarchy theme set\`. Derived vars (mention, reply,
+   borders) inherit from these via the @import above. */
+:root {
+    --colors: on;
+
+    --text-0: var(--bg-4);
+    --text-1: $FG_HI;
+    --text-2: $FG;
+    --text-3: color-mix(in oklab, $FG, $BG 12%);
+    --text-4: color-mix(in oklab, $FG, $BG 34%);
+    --text-5: color-mix(in oklab, $FG, $BG 55%);
+
+    --bg-4: $BG;
+    --bg-3: color-mix(in oklab, $BG, $FG 4%);
+    --bg-2: color-mix(in oklab, $BG, $FG 8%);
+    --bg-1: color-mix(in oklab, $BG, $FG 13%);
+    --hover: color-mix(in srgb, $FG, transparent 90%);
+    --active: color-mix(in srgb, $FG, transparent 80%);
+    --active-2: color-mix(in srgb, $FG, transparent 70%);
+    --message-hover: var(--hover);
+
+    --accent-1: color-mix(in oklab, $ACCENT, $LTN 22%);
+    --accent-2: color-mix(in oklab, $ACCENT, $LTN 10%);
+    --accent-3: $ACCENT;
+    --accent-4: color-mix(in oklab, $ACCENT, $DKN 12%);
+    --accent-5: color-mix(in oklab, $ACCENT, $DKN 24%);
+    --accent-new: $RED;
+
+    --online: $GREEN;
+    --dnd: $RED;
+    --idle: $YELLOW;
+    --streaming: $ACCENT;
+    --offline: var(--text-5);
+
+    --border-hover: var(--accent-2);
+    --button-border: color-mix(in srgb, $FG, transparent 88%);
+
+$(ramp "$RED" "    --red")
+$(ramp "$GREEN" "    --green")
+$(ramp "$BLUE" "    --blue")
+$(ramp "$YELLOW" "    --yellow")
+$(ramp "$MAGENTA" "    --purple")
+}
+HEADER
+}
+
+body=$(gen) || exit 0
+[ -n "$body" ] || exit 0
+
+wrote=0
+for themes_dir in "$HOME/.config/vesktop/themes" "$HOME/.config/Vencord/themes" \
+                  "$HOME/.config/discordcanary/themes"; do
+  [ -d "$themes_dir" ] || continue
+  target="$themes_dir/$THEME_FILE"
+  if [ -f "$target" ] && printf '%s\n' "$body" | cmp -s - "$target"; then
+    wrote=1; continue
+  fi
+  tmp=$(mktemp "$themes_dir/.system24.XXXXXX" 2>/dev/null) || continue
+  if printf '%s\n' "$body" > "$tmp" 2>/dev/null; then
+    chmod 644 "$tmp" 2>/dev/null
+    mv -f "$tmp" "$target" 2>/dev/null && wrote=1 || rm -f "$tmp"
+  else
+    rm -f "$tmp"
+  fi
+done
+
+exit 0
