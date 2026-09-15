@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "osia.ytgrab",
+  "name": "Video Grabber",
+  "version": "1.0.0",
+  "author": "osia",
+  "license": "MIT",
+  "description": "Paste a video URL, see a preview, pick picture and sound quality (or convert to GIF), download with yt-dlp + ffmpeg.",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "BarWidget.qml" },
+  "barWidget": {
+    "displayName": "Video Grabber",
+    "description": "A download button in the bar. Click it, paste any video URL, a preview loads, then choose picture quality (or none / GIF) and sound quality (or none) and hit download.",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": { "downloadDir": "", "video": "best", "audio": "best" },
+    "schema": [
+      { "key": "downloadDir", "type": "path", "label": "Save folder", "defaultValue": "", "description": "Where files land. Empty uses ~/Videos/ytgrab." }
+    ]
+  }
+}
