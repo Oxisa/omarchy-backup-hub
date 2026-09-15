@@ -21,3 +21,4 @@ X не удалять и не переустанавливать — переи�
 - Google Drive — https://drive.google.com
 - Yandex Диск — https://disk.yandex.ru
 - Gmail — https://mail.google.com
+- Telegram — https://web.telegram.org (официальный домен Telegram, не ставить с других адресов)
