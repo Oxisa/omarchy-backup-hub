@@ -16,5 +16,8 @@
 - tenzin.live-wallpaper — Live Wallpaper (видео-обои; путь к видео валидируется allowlist'ом путей/расширений и дублируется в bash+QML)
 - bibek.lock — Better Lock (активный lock screen; аутентификация полностью через PAM, блокировка на уровне compositor'а — WlSessionLock)
 - omapalette — Omapalette (темы из палитры обоев; только argv-вызовы, индекс без directory traversal)
+- io.github.i12bp8.oshelf — oShelf (drag&drop полка файлов/картинок/ссылок на краю экрана, с превью; нативный C++ drag-компонент — чистый Qt, без ручной памяти/сети/eval)
+
+  Требует сборку после `omarchy plugin add`: `make -C ~/.config/omarchy/plugins/io.github.i12bp8.oshelf`, затем `omarchy plugin enable io.github.i12bp8.oshelf`.
 
 Свои плагины (полный код) — в `plugins/`: `osia.ytgrab`.
