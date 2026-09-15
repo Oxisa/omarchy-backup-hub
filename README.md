@@ -6,7 +6,7 @@
 ## Установка на новой машине
 
 ```bash
-git clone https://github.com/<user>/omarchy-backup-hub.git ~/.local/opt/omarchy-backup-hub
+git clone https://github.com/Oxisa/omarchy-backup-hub.git ~/.local/opt/omarchy-backup-hub
 cd ~/.local/opt/omarchy-backup-hub
 ./install.sh
 ```
