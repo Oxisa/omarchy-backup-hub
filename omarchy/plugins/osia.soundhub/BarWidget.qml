@@ -141,6 +141,7 @@ BarWidget {
     function sound(): void { root.openTab(1) }
     function mixer(): void { root.openTab(1) }
     function equalizer(): void { root.openTab(2) }
+    function equalizerFor(mix: string): void { if (panelLoader.item) panelLoader.item.eqScope = mix || "global"; root.openTab(2) }
     function focus(): void { root.openTab(3) }
     function settings(): void { root.openTab(4) }
     function cycleStyle(): void { root.cycleStyle(1) }

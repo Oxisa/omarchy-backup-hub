@@ -287,6 +287,47 @@ def q(v: str) -> str:
     return json.dumps(v, ensure_ascii=False)
 
 
+# ---- per-mix equalizer (a "modifier" on the mix) -------------------------------
+# Every mix is a filter-chain: preamp (mixer gain) + six biquads, same shape as
+# the global EQ. Off = all gains 0 dB, so the chain is transparent; on/off and
+# band edits are pushed live with pw-cli, never restarting the mixes host.
+EQ_FREQS = [60, 250, 1000, 4000, 8000, 16000]
+EQ_KINDS = ["bq_lowshelf", "bq_peaking", "bq_peaking", "bq_peaking", "bq_peaking", "bq_highshelf"]
+EQ_QS = [0.7, 1.0, 1.0, 1.0, 1.0, 0.7]
+
+
+def mix_eq(m: dict) -> dict:
+    e = m.setdefault("eq", {})
+    e.setdefault("enabled", False)
+    if not (isinstance(e.get("bands"), list) and len(e["bands"]) == 6):
+        e["bands"] = [0.0] * 6
+    e.setdefault("preset", "flat")
+    e.setdefault("autoPreamp", True)
+    e.setdefault("preamp", 0.0)
+    return e
+
+
+def mix_eq_values(m: dict) -> tuple[float, list]:
+    """(linear preamp gain, band gains in dB) actually applied."""
+    e = mix_eq(m)
+    if not e["enabled"]:
+        return 1.0, [0.0] * 6
+    pre_db = -max(0.0, max(e["bands"])) if e["autoPreamp"] else float(e["preamp"])
+    return 10 ** (pre_db / 20), [float(b) for b in e["bands"]]
+
+
+def mix_eq_push(m: dict, g: "Graph | None" = None) -> None:
+    g = g or Graph(dump())
+    nid = g.by_name.get(MIX_PREFIX + m["id"])
+    if not nid:
+        return
+    pre, bands = mix_eq_values(m)
+    params: list = ["pre:Gain 1", round(pre, 5)]
+    for i in range(6):
+        params += [f"b{i}:Gain", round(bands[i], 2)]
+    run(["pw-cli", "set-param", str(nid), "Props", json.dumps({"params": params})])
+
+
 def config_text(s: dict) -> str:
     mods = []
     for m in s["mixes"]:
@@ -295,10 +336,28 @@ def config_text(s: dict) -> str:
             pb = f"target.object = {q(out)}\n          node.dont-reconnect = false"
         else:
             pb = "node.autoconnect = false"
-        mods.append(f"""  {{ name = libpipewire-module-loopback
+        pre, bands = mix_eq_values(m)
+        eq_nodes = [f'          {{ type = builtin name = pre label = mixer control = {{ "Gain 1" = {pre:.5f} }} }}']
+        for i in range(6):
+            eq_nodes.append(f'          {{ type = builtin name = b{i} label = {EQ_KINDS[i]} '
+                            f'control = {{ "Freq" = {EQ_FREQS[i]:.1f} "Q" = {EQ_QS[i]} "Gain" = {bands[i]:.2f} }} }}')
+        eq_links = ['          { output = "pre:Out" input = "b0:In" }']
+        eq_links += [f'          {{ output = "b{i}:Out" input = "b{i + 1}:In" }}' for i in range(5)]
+        mods.append(f"""  {{ name = libpipewire-module-filter-chain
     args = {{
       node.description = {q(m["name"])}
+      audio.channels = 2
       audio.position = [ FL FR ]
+      filter.graph = {{
+        nodes = [
+{chr(10).join(eq_nodes)}
+        ]
+        links = [
+{chr(10).join(eq_links)}
+        ]
+        inputs = [ "pre:In 1" ]
+        outputs = [ "b5:Out" ]
+      }}
       capture.props = {{
         node.name = {q(MIX_PREFIX + m["id"])}
         node.description = {q("SoundHub · " + m["name"])}
@@ -590,6 +649,8 @@ def snapshot() -> dict:
     g = Graph(dump())
     apps, mics = playback_streams(g), microphones(g)
     live_mix = {m["id"]: bool(g.by_name.get(MIX_PREFIX + m["id"])) for m in s["mixes"]}
+    for m in s["mixes"]:
+        mix_eq(m)
     srcs = [dict(a, nodeIds=a["nodes"], nodes=len(a["nodes"]), live=True)
             for a in list(apps.values()) + list(mics.values())]
     known = {x["key"] for x in srcs}
@@ -722,6 +783,28 @@ def main(argv: list[str]) -> int:
                 if out_id:
                     run(["pw-metadata", str(out_id), "target.object", live_output])
             poke()
+    elif cmd == "mix-eq" and rest:
+        m = mix_by_id(s, rest[0])
+        if not m:
+            return out_json({"ok": False, "error": "no such mix"})
+        e = mix_eq(m)
+        kv = parse_kv(rest[1:])
+        if "enabled" in kv:
+            e["enabled"] = kv["enabled"] in ("1", "true", "yes")
+        if "bands" in kv:
+            vals = [max(-12.0, min(12.0, round(float(x), 1))) for x in kv["bands"].split(",")]
+            if len(vals) == 6:
+                e["bands"] = vals
+        if "preset" in kv:
+            e["preset"] = kv["preset"][:30]
+        if "preamp" in kv:
+            if kv["preamp"] == "auto":
+                e["autoPreamp"] = True
+            else:
+                e["autoPreamp"], e["preamp"] = False, max(-24.0, min(6.0, round(float(kv["preamp"]), 1)))
+        save(s)
+        write_host(s)                      # next start comes up the same; live values below
+        mix_eq_push(m)
     elif cmd == "mix-remove" and rest:
         s["mixes"] = [m for m in s["mixes"] if m["id"] != rest[0]]
         s["cables"] = [c for c in s["cables"] if c["mix"] != rest[0]]

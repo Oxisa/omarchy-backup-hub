@@ -937,6 +937,39 @@ Item {
               onChanged: function(v) { if (v !== (mc.modelData.output || "")) page.cmd(["mix-set", mc.modelData.id, "output=" + v]) }
             }
 
+            Flow {                                          // modifiers on the mix
+              width: parent.width
+              spacing: Style.space(6)
+              Chip {
+                readonly property bool eqOn: !!(mc.modelData.eq && mc.modelData.eq.enabled)
+                label: "\u{f0ea2}  " + page.t("mx.modEq") + (eqOn ? "  ✓" : "")
+                tint: mc.tint
+                ink: page.bg
+                on: eqOn
+                ff: page.ff
+                onClicked: page.cmd(["mix-eq", mc.modelData.id, "enabled=" + (eqOn ? "0" : "1")])
+              }
+              Chip {
+                label: "\u{f0493}  " + page.t("mx.modEqEdit")
+                tint: Qt.darker(page.fg, 1.3)
+                ink: page.bg
+                on: false
+                ff: page.ff
+                onClicked: if (host && typeof host.openEqFor === "function") host.openEqFor(mc.modelData.id)
+              }
+            }
+
+            Chip {                                          // EQ on, but this mix skips it
+              visible: page.eqOn && !!mc.modelData.output && mc.modelData.output !== "soundhub_eq"
+                       && !(mc.modelData.eq && mc.modelData.eq.enabled)
+              label: "\u{f0026}  " + page.t("mx.bypassEq")
+              tint: page.urgent
+              ink: page.bg
+              on: true
+              ff: page.ff
+              onClicked: page.cmd(["mix-set", mc.modelData.id, "output=soundhub_eq"])
+            }
+
             // inputs: per-source level, mute, remove
             Text {
               visible: mc.inputs.length === 0

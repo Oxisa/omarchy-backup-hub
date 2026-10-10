@@ -1,4 +1,6 @@
 import QtQuick
+import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Pipewire
 import qs.Commons
 import qs.Ui
@@ -18,13 +20,38 @@ Column {
   readonly property color fg: host ? host.fg : "white"
   readonly property color accent: host ? host.accent : "white"
   readonly property string ff: host ? host.ff : ""
-  readonly property var eq: host ? host.eq : ({})
+  // scope: "global" (the system EQ) or a mix id (that mix's own EQ modifier)
+  readonly property string scope: host && host.eqScope ? host.eqScope : "global"
+  readonly property bool isGlobal: scope === "global"
+  property var mixes: []
+  readonly property var scopeMix: { for (var i = 0; i < mixes.length; i++) if (mixes[i].id === scope) return mixes[i]; return null }
+  readonly property var eq: isGlobal ? (host ? host.eq : ({})) : (scopeMix && scopeMix.eq ? scopeMix.eq : ({}))
+  onMixesChanged: if (!isGlobal && !scopeMix && mixes.length >= 0 && mixLoaded) host.eqScope = "global"
+  property bool mixLoaded: false
+
+  // send a change to whichever EQ is in scope
+  function mixCmd(args) { mixRun.queue = mixRun.queue.concat([[mixBin].concat(args)]); if (!mixRun.running) mixRun.next() }
+  Process {
+    id: mixRun
+    property var queue: []
+    function next() { if (!queue.length) { page.checkBypass(); return } command = queue[0]; queue = queue.slice(1); running = true }
+    onExited: next()
+  }
   readonly property bool eqOn: !!eq.enabled
   readonly property real radius: Math.max(6, Math.min(Style.cornerRadius, 12))
+  readonly property color urgent: host ? host.urgent : "red"
   function t(k, a) { return host ? host.t(k, a) : k }
 
   // friendly name of the device the EQ feeds
   readonly property string targetLabel: {
+    if (!isGlobal) {
+      var o = scopeMix ? (scopeMix.output || "") : ""
+      if (o === "soundhub_eq") return t("mx.viaEq", "").replace(/\s*→\s*$/, "")
+      if (!o) return t("mx.virtual")
+      var nn = Pipewire.nodes ? Pipewire.nodes.values : []
+      for (var j = 0; j < nn.length; j++) if (nn[j] && String(nn[j].name) === o) return Model.nodeLabel(nn[j])
+      return o
+    }
     var name = String(eq.target || "")
     var nodes = Pipewire.nodes ? Pipewire.nodes.values : []
     for (var i = 0; i < nodes.length; i++)
@@ -72,7 +99,8 @@ Column {
     id: push
     interval: 160
     onTriggered: {
-      host.eqRun(["set", "--bands", page.bands.join(","), "--preset", page.preset])
+      if (page.isGlobal) host.eqRun(["set", "--bands", page.bands.join(","), "--preset", page.preset])
+      else page.mixCmd(["mix-eq", page.scope, "bands=" + page.bands.join(","), "preset=" + page.preset])
       page.editing = false
     }
   }
@@ -84,6 +112,34 @@ Column {
     color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
     border.width: 1
     border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+  }
+
+  // ======== which EQ: the global one or a mix's own ========
+  Flow {
+    visible: page.mixes.length > 0
+    width: parent.width
+    spacing: Style.space(6)
+    Repeater {
+      model: [{ id: "global", name: page.t("eq.global") }].concat(page.mixes.map(function(m) { return { id: m.id, name: m.name, on: m.eq && m.eq.enabled } }))
+      delegate: Rectangle {
+        id: sc
+        required property var modelData
+        readonly property bool current: page.scope === modelData.id
+        height: scText.implicitHeight + Style.space(8)
+        width: scText.implicitWidth + Style.space(20)
+        radius: height / 2
+        color: current ? page.accent : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, scMouse.containsMouse ? 0.10 : 0.05)
+        Text {
+          id: scText
+          anchors.centerIn: parent
+          text: (sc.modelData.id === "global" ? "\u{f0ea2}  " : "\u{f1542}  ") + sc.modelData.name
+                + (sc.modelData.id !== "global" && sc.modelData.on ? "  ●" : "")
+          color: sc.current ? Color.background : page.fg
+          font.family: page.ff; font.pixelSize: Style.font.caption; font.bold: sc.current
+        }
+        MouseArea { id: scMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: host.eqScope = sc.modelData.id }
+      }
+    }
   }
 
   // ======== header card ========
@@ -133,7 +189,11 @@ Column {
           MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: if (host && !host.eqBusy) host.eqRun([page.eqOn ? "disable" : "enable"])
+            onClicked: {
+              if (!host) return
+              if (page.isGlobal) { if (!host.eqBusy) host.eqRun([page.eqOn ? "disable" : "enable"]) }
+              else page.mixCmd(["mix-eq", page.scope, "enabled=" + (page.eqOn ? "0" : "1")])
+            }
           }
         }
       }
@@ -145,7 +205,7 @@ Column {
         Text {
           width: parent.width
           elide: Text.ElideRight
-          text: page.t("eq.enabled") + (page.preset === "custom" ? "  ·  " + page.t("eq.custom")
+          text: (page.isGlobal ? page.t("eq.enabled") : (page.scopeMix ? page.scopeMix.name : "")) + (page.preset === "custom" ? "  ·  " + page.t("eq.custom")
                                        : "  ·  " + page.t("preset." + page.preset))
           color: page.fg
           font.family: page.ff; font.pixelSize: Style.font.title; font.bold: true
@@ -188,6 +248,81 @@ Column {
       }
     }
   }
+
+  // ---- mixes that go around the EQ (their output is a device, not the EQ) ----
+  readonly property string mixBin: ("" + Qt.resolvedUrl("bin/soundhub-mix")).replace("file://", "")
+  property var bypass: []
+  function checkBypass() { if (!mixProc.running) { mixProc.command = [mixBin, "snapshot"]; mixProc.running = true } }
+  onVisibleChanged: if (visible) checkBypass()
+  Component.onCompleted: checkBypass()
+  onEqOnChanged: checkBypass()
+  Process {
+    id: mixProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var r = JSON.parse(text)
+          page.mixes = r.mixes || []
+          page.mixLoaded = true
+          page.bypass = (r.mixes || []).filter(function(m) {
+            return m.output && m.output !== "soundhub_eq" && !(m.eq && m.eq.enabled)
+          })
+        } catch (e) { page.bypass = [] }
+      }
+    }
+  }
+
+  Rectangle {
+    visible: page.isGlobal && page.eqOn && page.bypass.length > 0
+    width: parent.width
+    height: bypassRow.implicitHeight + Style.spacing.sm * 2
+    radius: page.radius
+    color: Qt.tint(Color.background, Qt.rgba(page.urgent.r, page.urgent.g, page.urgent.b, 0.12))
+    border.width: 1
+    border.color: Qt.rgba(page.urgent.r, page.urgent.g, page.urgent.b, 0.5)
+    Row {
+      id: bypassRow
+      anchors.verticalCenter: parent.verticalCenter
+      x: Style.spacing.md
+      width: parent.width - Style.spacing.md * 2
+      spacing: Style.spacing.sm
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        width: parent.width - fixBtn.width - parent.spacing
+        wrapMode: Text.Wrap
+        text: "\u{f0026}  " + page.t("eq.bypass", page.bypass.map(function(m) { return m.name }).join(", "))
+        color: page.fg
+        font.family: page.ff; font.pixelSize: Style.font.caption
+      }
+      Rectangle {
+        id: fixBtn
+        anchors.verticalCenter: parent.verticalCenter
+        width: fixText.implicitWidth + Style.space(18)
+        height: fixText.implicitHeight + Style.space(8)
+        radius: height / 2
+        color: page.accent
+        Text {
+          id: fixText
+          anchors.centerIn: parent
+          text: page.t("eq.bypassFix")
+          color: Color.background
+          font.family: page.ff; font.pixelSize: Style.font.caption; font.bold: true
+        }
+        MouseArea {
+          anchors.fill: parent
+          cursorShape: Qt.PointingHandCursor
+          onClicked: {
+            var cmds = page.bypass.map(function(m) { return [page.mixBin, "mix-set", m.id, "output=soundhub_eq"] })
+            for (var i = 0; i < cmds.length; i++) Quickshell.execDetached(cmds[i])
+            page.bypass = []
+            fixCheck.restart()
+          }
+        }
+      }
+    }
+  }
+  Timer { id: fixCheck; interval: 1500; onTriggered: page.checkBypass() }
 
   // ======== curve card ========
   Card {
@@ -359,7 +494,10 @@ Column {
         opacity: enabled ? 1 : 0.45
         fillColor: page.accent
         fontFamily: page.ff
-        onReleased: function(v) { host.eqRun(["set", "--preamp", String(Math.round(v * 2) / 2)]) }
+        onReleased: function(v) {
+          var val = String(Math.round(v * 2) / 2)
+          if (page.isGlobal) host.eqRun(["set", "--preamp", val]); else page.mixCmd(["mix-eq", page.scope, "preamp=" + val])
+        }
       }
       Rectangle {                                     // Auto chip
         id: autoChip
@@ -379,7 +517,10 @@ Column {
         MouseArea {
           anchors.fill: parent
           cursorShape: Qt.PointingHandCursor
-          onClicked: host.eqRun(["set", "--preamp", autoChip.on ? String(page.shownPreamp) : "auto"])
+          onClicked: {
+            var val = autoChip.on ? String(page.shownPreamp) : "auto"
+            if (page.isGlobal) host.eqRun(["set", "--preamp", val]); else page.mixCmd(["mix-eq", page.scope, "preamp=" + val])
+          }
         }
       }
     }

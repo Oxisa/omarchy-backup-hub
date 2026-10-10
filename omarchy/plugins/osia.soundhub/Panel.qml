@@ -29,6 +29,8 @@ Panel {
   readonly property color urgent: bar ? bar.urgent : Color.urgent
 
   property int tab: 0
+  property string eqScope: "global"      // EQ tab edits the global EQ or one mix's own
+  function openEqFor(mixId) { eqScope = mixId || "global"; tab = 2 }
   property int shownTab: 0                // the page on screen; follows `tab` through a short fade
   onTabChanged: if (tab !== shownTab) swap.restart()
   SequentialAnimation {
