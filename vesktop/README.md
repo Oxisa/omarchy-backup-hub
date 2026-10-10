@@ -5,4 +5,3 @@
 - `vencord-settings.json` — включённые плагины Vencord + `enabledThemes: omarchy-system24.theme.css`.
   Смержить нужные ключи (`useQuickCss`, `themeLinks`, `enabledThemes`, `plugins`) в
   `~/.config/vesktop/settings/settings.json` вручную (там же живут сессии/куки — целиком файл не перезатирать).
-- `quickCss.css` → `~/.config/vesktop/settings/quickCss.css`.

@@ -11,7 +11,7 @@ cd ~/.local/opt/omarchy-backup-hub
 ./install.sh
 ```
 
-Скрипт симлинкует содержимое `plugins/`, `hooks/theme-set.d/` и `hypr/` в
+Скрипт симлинкует содержимое `plugins/` и `hooks/theme-set.d/` в
 соответствующие места под `~/.config/`. Существующие обычные файлы (не симлинки)
 перед этим сохраняются как `*.pre-hub.bak`. Повторный запуск безопасен.
 
@@ -19,4 +19,3 @@ cd ~/.local/opt/omarchy-backup-hub
 
 - `plugins/` — omarchy-shell плагины (`~/.config/omarchy/plugins/<name>`)
 - `hooks/theme-set.d/` — хуки `omarchy theme set` (`~/.config/omarchy/hooks/theme-set.d/<name>`)
-- `hypr/` — файлы Hyprland lua-конфига (`~/.config/hypr/<name>`)

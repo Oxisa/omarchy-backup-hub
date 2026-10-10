@@ -27,6 +27,5 @@ link_dir_contents() {
 
 link_dir_contents "$REPO_DIR/plugins"            "$HOME/.config/omarchy/plugins"
 link_dir_contents "$REPO_DIR/hooks/theme-set.d"   "$HOME/.config/omarchy/hooks/theme-set.d"
-link_dir_contents "$REPO_DIR/hypr"                "$HOME/.config/hypr"
 
 echo "done."
