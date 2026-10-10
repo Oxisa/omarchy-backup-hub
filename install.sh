@@ -25,7 +25,7 @@ link_dir_contents() {
   done
 }
 
-link_dir_contents "$REPO_DIR/plugins"            "$HOME/.config/omarchy/plugins"
-link_dir_contents "$REPO_DIR/hooks/theme-set.d"   "$HOME/.config/omarchy/hooks/theme-set.d"
+link_dir_contents "$REPO_DIR/omarchy/plugins"    "$HOME/.config/omarchy/plugins"
+link_dir_contents "$REPO_DIR/omarchy/hooks/theme-set.d" "$HOME/.config/omarchy/hooks/theme-set.d"
 
 echo "done."
