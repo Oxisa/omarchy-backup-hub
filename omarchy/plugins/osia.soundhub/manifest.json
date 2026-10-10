@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "osia.soundhub",
+  "name": "SoundHub",
+  "version": "0.2.0",
+  "author": "osia",
+  "license": "MIT",
+  "description": "One audio hub for the bar: a spinning-record now playing view for any MPRIS player, live spectrum, Omarchy's sound controls (devices, volumes, per-app mix) and a live PipeWire equalizer. Follows the Omarchy theme.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "SoundHub",
+    "description": "Live spectrum in the bar (wheel/middle click: style, right click: colours); click for now playing, sound devices, per-app volume and the equalizer.",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "center",
+    "defaults": {
+      "lang": "en",
+      "pressing": "theme",
+      "spectrumStyle": "bars",
+      "barStyle": "bars",
+      "barPalette": "accent",
+      "barMode": "bottom",
+      "notify": false
+    }
+  }
+}

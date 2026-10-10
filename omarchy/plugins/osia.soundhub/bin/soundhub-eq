@@ -1,0 +1,347 @@
+#!/usr/bin/env python3
+"""SoundHub equalizer backend.
+
+The equalizer is a PipeWire filter-chain hosted by its own `pipewire -c`
+client under a systemd user unit (the same pattern Omarchy uses for speaker
+tuning), so turning it on/off or moving a slider never restarts WirePlumber
+and never drops other apps' audio.
+
+  sink   soundhub_eq           what apps play into (made the default sink)
+  stream soundhub_eq.output    feeds the physical output ("target")
+
+Graph per channel: pre (mixer gain = preamp) -> 6 biquads
+(low shelf 60 Hz, peaking 250/1k/4k/8k, high shelf 16 kHz).
+Band/preamp changes are pushed live with `pw-cli set-param` and also written
+into the config so the next start comes up identical.
+
+Commands (all print one JSON object):
+  status
+  enable [--target SINK]     start, route through EQ, make it the default sink
+  disable                    restore the target as default, stop
+  set --bands g1,..,g6 [--preamp DB|auto] [--preset NAME]
+  retarget SINK              send EQ output to another physical sink
+  ensure                     if the EQ output drifted off its target (the target
+                             vanished and came back, e.g. Bluetooth), move it back
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+NAME = "soundhub_eq"
+OUT_NAME = "soundhub_eq.output"
+UNIT = "soundhub-eq.service"
+FREQS = [60, 250, 1000, 4000, 8000, 16000]
+KINDS = ["bq_lowshelf", "bq_peaking", "bq_peaking", "bq_peaking", "bq_peaking", "bq_highshelf"]
+QS = [0.7, 1.0, 1.0, 1.0, 1.0, 0.7]
+
+CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+STATE = CONFIG_HOME / "soundhub" / "eq.json"
+CONF = CONFIG_HOME / "pipewire" / "soundhub-eq.conf"
+UNIT_FILE = CONFIG_HOME / "systemd" / "user" / UNIT
+
+
+def run(args: list[str], timeout: float = 4.0) -> subprocess.CompletedProcess:
+    return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+
+
+def out(obj: dict) -> int:
+    print(json.dumps(obj, ensure_ascii=False))
+    return 0 if obj.get("ok", True) else 1
+
+
+# ---- state -------------------------------------------------------------------
+
+def clamp(v: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, v))
+
+
+def load() -> dict:
+    s = {"enabled": False, "bands": [0.0] * 6, "preamp": 0.0, "autoPreamp": True,
+         "preset": "flat", "target": ""}
+    try:
+        raw = json.loads(STATE.read_text())
+        if isinstance(raw, dict):
+            bands = raw.get("bands")
+            if isinstance(bands, list) and len(bands) == 6:
+                s["bands"] = [round(clamp(float(b), -12, 12), 1) for b in bands]
+            s["preamp"] = round(clamp(float(raw.get("preamp", 0)), -24, 6), 1)
+            s["autoPreamp"] = bool(raw.get("autoPreamp", True))
+            s["enabled"] = bool(raw.get("enabled", False))
+            s["preset"] = str(raw.get("preset", "flat"))[:40]
+            s["target"] = str(raw.get("target", ""))[:200]
+    except (OSError, ValueError, TypeError):
+        pass
+    return s
+
+
+def save(s: dict) -> None:
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = STATE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(s, indent=1))
+    tmp.replace(STATE)
+
+
+def effective_preamp(s: dict) -> float:
+    if s["autoPreamp"]:
+        return -max(0.0, max(s["bands"]))
+    return s["preamp"]
+
+
+# ---- pipewire config --------------------------------------------------------
+
+def q(v: str) -> str:
+    return json.dumps(v)
+
+
+def config_text(s: dict) -> str:
+    pre = 10 ** (effective_preamp(s) / 20)
+    nodes = [f'        {{ type = builtin name = pre label = mixer control = {{ "Gain 1" = {pre:.5f} }} }}']
+    for i in range(6):
+        nodes.append(f'        {{ type = builtin name = b{i} label = {KINDS[i]} '
+                     f'control = {{ "Freq" = {FREQS[i]:.1f} "Q" = {QS[i]} "Gain" = {s["bands"][i]:.1f} }} }}')
+    links = ['        { output = "pre:Out" input = "b0:In" }']
+    links += [f'        {{ output = "b{i}:Out" input = "b{i + 1}:In" }}' for i in range(5)]
+    target = f"\n        target.object = {q(s['target'])}" if s["target"] else ""
+    return f"""# Managed by SoundHub (osia.soundhub). Rewritten on every change.
+context.properties = {{ log.level = 0 }}
+context.spa-libs = {{
+    audio.convert.* = audioconvert/libspa-audioconvert
+    support.*       = support/libspa-support
+}}
+context.modules = [
+  {{ name = libpipewire-module-rt args = {{ }} flags = [ ifexists nofail ] }}
+  {{ name = libpipewire-module-protocol-native }}
+  {{ name = libpipewire-module-client-node }}
+  {{ name = libpipewire-module-adapter }}
+  {{ name = libpipewire-module-filter-chain
+    args = {{
+      node.description = "SoundHub EQ"
+      media.name = "SoundHub EQ"
+      filter.graph = {{
+        nodes = [
+{chr(10).join(nodes)}
+        ]
+        links = [
+{chr(10).join(links)}
+        ]
+        inputs = [ "pre:In 1" ]
+        outputs = [ "b5:Out" ]
+      }}
+      audio.channels = 2
+      audio.position = [ FL FR ]
+      capture.props = {{
+        node.name = {q(NAME)}
+        media.class = Audio/Sink
+      }}
+      playback.props = {{
+        node.name = {q(OUT_NAME)}
+        node.passive = true
+        media.role = "DSP"{target}
+      }}
+    }}
+  }}
+]
+"""
+
+
+UNIT_TEXT = """[Unit]
+Description=SoundHub equalizer (PipeWire filter-chain)
+After=pipewire.service
+Requires=pipewire.service
+
+[Service]
+ExecStart=/usr/bin/pipewire -c soundhub-eq.conf
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=pipewire.service
+"""
+
+
+def write_files(s: dict) -> None:
+    CONF.parent.mkdir(parents=True, exist_ok=True)
+    tmp = CONF.with_suffix(".tmp")
+    tmp.write_text(config_text(s))
+    tmp.replace(CONF)
+    UNIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    if not UNIT_FILE.exists() or UNIT_FILE.read_text() != UNIT_TEXT:
+        UNIT_FILE.write_text(UNIT_TEXT)
+        run(["systemctl", "--user", "daemon-reload"])
+
+
+# ---- graph -------------------------------------------------------------------
+
+def dump() -> list:
+    r = run(["pw-dump"], 5.0)
+    try:
+        return json.loads(r.stdout) if r.returncode == 0 else []
+    except ValueError:
+        return []
+
+
+def node_id(objs: list, name: str) -> str:
+    for o in objs:
+        if o.get("type") == "PipeWire:Interface:Node":
+            if (o.get("info") or {}).get("props", {}).get("node.name") == name:
+                return str(o.get("id"))
+    return ""
+
+
+def wait_node(name: str, timeout: float = 6.0) -> str:
+    end = time.time() + timeout
+    while time.time() < end:
+        nid = node_id(dump(), name)
+        if nid:
+            return nid
+        time.sleep(0.2)
+    return ""
+
+
+def default_sink() -> str:
+    r = run(["pactl", "get-default-sink"])
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def unit_active() -> bool:
+    return run(["systemctl", "--user", "is-active", "--quiet", UNIT]).returncode == 0
+
+
+def push_live(s: dict) -> None:
+    nid = node_id(dump(), NAME)
+    if not nid:
+        return
+    params: list = ["pre:Gain 1", round(10 ** (effective_preamp(s) / 20), 5)]
+    for i in range(6):
+        params += [f"b{i}:Gain", s["bands"][i]]
+    run(["pw-cli", "set-param", nid, "Props", json.dumps({"params": params})])
+
+
+def status(s: dict, ok: bool = True, error: str = "") -> dict:
+    running = unit_active()
+    return {"ok": ok, "error": error, "enabled": s["enabled"], "running": running,
+            "bands": s["bands"], "preamp": s["preamp"], "autoPreamp": s["autoPreamp"],
+            "effectivePreamp": effective_preamp(s), "preset": s["preset"],
+            "target": s["target"], "defaultSink": default_sink(), "freqs": FREQS}
+
+
+# ---- commands ----------------------------------------------------------------
+
+def cmd_enable(s: dict, target: str) -> dict:
+    current = default_sink()
+    if not target:
+        target = current if current and current != NAME else s["target"]
+    if not target:
+        return status(s, False, "no output device to route the equalizer to")
+    s["target"], s["enabled"] = target, True
+    write_files(s)
+    save(s)
+    run(["systemctl", "--user", "enable", UNIT])
+    run(["systemctl", "--user", "restart", UNIT])
+    if not wait_node(NAME):
+        return status(s, False, "equalizer did not start (see: journalctl --user -u soundhub-eq)")
+    run(["pactl", "set-default-sink", NAME])
+    return status(s)
+
+
+def cmd_disable(s: dict) -> dict:
+    s["enabled"] = False
+    save(s)
+    if s["target"] and default_sink() == NAME:
+        run(["pactl", "set-default-sink", s["target"]])
+    run(["systemctl", "--user", "disable", "--now", UNIT])
+    return status(s)
+
+
+def cmd_set(s: dict, bands: str | None, preamp: str | None, preset: str | None) -> dict:
+    if bands:
+        vals = [float(x) for x in bands.split(",")]
+        if len(vals) != 6:
+            return status(s, False, "need 6 band values")
+        s["bands"] = [round(clamp(v, -12, 12), 1) for v in vals]
+    if preamp is not None:
+        if preamp == "auto":
+            s["autoPreamp"] = True
+        else:
+            s["autoPreamp"] = False
+            s["preamp"] = round(clamp(float(preamp), -24, 6), 1)
+    if preset is not None:
+        s["preset"] = preset[:40]
+    save(s)
+    write_files(s)
+    if s["enabled"]:
+        push_live(s)
+    return status(s)
+
+
+def cmd_retarget(s: dict, sink: str) -> dict:
+    if not sink or sink == NAME:
+        return status(s, False, "bad target")
+    s["target"] = sink
+    save(s)
+    write_files(s)
+    out_id = node_id(dump(), OUT_NAME)
+    if out_id:
+        run(["pw-metadata", out_id, "target.object", sink])
+    return status(s)
+
+
+def cmd_ensure(s: dict) -> dict:
+    if not s["enabled"] or not s["target"]:
+        return status(s)
+    objs = dump()
+    out_id, target_id = node_id(objs, OUT_NAME), node_id(objs, s["target"])
+    if not out_id or not target_id:
+        return status(s)
+    linked = {str(o["info"].get("input-node-id")) for o in objs
+              if o.get("type") == "PipeWire:Interface:Link"
+              and str((o.get("info") or {}).get("output-node-id")) == out_id}
+    if linked and target_id not in linked:
+        run(["pw-metadata", out_id, "target.object", s["target"]])
+    return status(s)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(prog="soundhub-eq")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("status")
+    e = sub.add_parser("enable")
+    e.add_argument("--target", default="")
+    sub.add_parser("disable")
+    sub.add_parser("ensure")
+    st = sub.add_parser("set")
+    st.add_argument("--bands")
+    st.add_argument("--preamp")
+    st.add_argument("--preset")
+    rt = sub.add_parser("retarget")
+    rt.add_argument("sink")
+    a = ap.parse_args()
+
+    s = load()
+    try:
+        if a.cmd == "status":
+            return out(status(s))
+        if a.cmd == "enable":
+            return out(cmd_enable(s, a.target))
+        if a.cmd == "disable":
+            return out(cmd_disable(s))
+        if a.cmd == "set":
+            return out(cmd_set(s, a.bands, a.preamp, a.preset))
+        if a.cmd == "ensure":
+            return out(cmd_ensure(s))
+        if a.cmd == "retarget":
+            return out(cmd_retarget(s, a.sink))
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        return out(status(s, False, str(exc)))
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

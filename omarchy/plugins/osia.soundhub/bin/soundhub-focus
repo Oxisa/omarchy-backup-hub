@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+# SoundHub Focus audio backend.
+# Vendored from OmaFocus by xshubhamg (MIT, see ../focus/LICENSE); paths,
+# marker and client name adapted for SoundHub.
+#
+# Reconciles one `mpv --loop-file=inf` process per active ambient sound.
+#
+# Security posture (Omarchy marketplace review):
+# - Fixed PATH (/usr/bin:/bin). Every tool is resolved after the export and
+#   the script aborts if mpv is missing, so a planted PATH cannot redirect
+#   execution into attacker-controlled binaries.
+# - Private runtime dir: ${XDG_RUNTIME_DIR}/soundhub-focus-<uid> (0700 by design),
+#   falling back to /tmp/soundhub-focus-<uid> which is created 0700 and verified
+#   (not a symlink, owned by our UID, mode 0700) on every invocation.
+# - No pattern kills. Tracks are signaled by PID file, and a PID is only
+#   signaled after /proc/<pid>/cmdline is verified to be OUR mpv command
+#   for that exact sound file. A final sweep only touches processes playing
+#   files from OUR sounds dir (pidfile-verified tracks are spared).
+# - Every state file refuses symlinks (a planted link is removed and treated
+#   as absent instead of followed) and is written atomically via
+#   mktemp + chmod 600 + rename. umask 077.
+# - No unbounded waits: process exit is polled with a ~1s deadline, and the
+#   QML caller wraps this script in `timeout`.
+#
+# Usage:
+#   soundhub-focus sync [<id>:<vol> ...]   # volumes already master-adjusted; absent/0 = stopped
+#   soundhub-focus stop               # stop every focus track
+set -u
+umask 077
+export PATH="/usr/bin:/bin"
+
+MARK="soundhub-focus"
+KNOWN="birds boat city coffee-shop fireplace pink-noise rain storm stream summer-night train waves white-noise wind"
+SOUNDS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../focus/sounds" && pwd)"
+UID_NOW="$(id -u)"
+
+if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+  RUNTIME_DIR="${XDG_RUNTIME_DIR}/soundhub-focus-${UID_NOW}"
+else
+  RUNTIME_DIR="/tmp/soundhub-focus-${UID_NOW}"
+fi
+
+die() { echo "soundhub-focus: $*" >&2; exit 1; }
+
+ensure_runtime_dir() {
+  [ -L "$RUNTIME_DIR" ] && die "runtime dir is a symlink, refusing: $RUNTIME_DIR"
+  mkdir -p -m 700 "$RUNTIME_DIR" || die "cannot create $RUNTIME_DIR"
+  [ -L "$RUNTIME_DIR" ] && die "runtime dir is a symlink, refusing: $RUNTIME_DIR"
+  [ "$(stat -c %u "$RUNTIME_DIR")" = "$UID_NOW" ] || die "runtime dir not owned by uid $UID_NOW"
+  chmod 700 "$RUNTIME_DIR"
+}
+
+MPV=""
+require_tools() {
+  MPV="$(command -v mpv)" || die "mpv not found in PATH"
+}
+
+is_known() {
+  local needle="$1" candidate
+  for candidate in $KNOWN; do
+    [ "$candidate" = "$needle" ] && return 0
+  done
+  return 1
+}
+
+path_for() { printf '%s/%s.%s' "$RUNTIME_DIR" "$1" "$2"; }
+
+# Echo the PID recorded for a track, but only if it is alive AND verified to
+# be our mpv instance for that exact sound file. Anything else (dead PID,
+# foreign process, planted pidfile) is cleaned up and treated as absent.
+track_pid() {
+  local id="$1" pf pid cmd
+  pf="$(path_for "$id" pid)"
+  [ -L "$pf" ] && rm -f "$pf"
+  [ -f "$pf" ] || return 1
+  pid="$(cat "$pf" 2>/dev/null)" || return 1
+  [[ "$pid" =~ ^[0-9]+$ ]] || { rm -f "$pf" "$(path_for "$id" vol)"; return 1; }
+  kill -0 "$pid" 2>/dev/null || { rm -f "$pf" "$(path_for "$id" vol)"; return 1; }
+  cmd="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)" || return 1
+  case "$cmd" in
+    *"mpv "*"$MARK-$id "*"$SOUNDS_DIR/$id.ogg"*) printf '%s' "$pid"; return 0 ;;
+    *) rm -f "$pf" "$(path_for "$id" vol)"; return 1 ;;
+  esac
+}
+
+stop_track() {
+  local id="$1" pid i
+  if pid="$(track_pid "$id")"; then
+    kill "$pid" 2>/dev/null || true
+    for i in $(seq 1 10); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+  fi
+  rm -f "$(path_for "$id" pid)" "$(path_for "$id" vol)"
+}
+
+# Symlink-safe atomic write: a planted link is removed, never followed.
+write_state_file() {
+  local file="$1" content="$2" tmp
+  [ -L "$file" ] && rm -f "$file"
+  tmp="$(mktemp "${RUNTIME_DIR}/.tmp.XXXXXX")" || die "mktemp failed"
+  printf '%s' "$content" > "$tmp"
+  chmod 600 "$tmp"
+  mv -f "$tmp" "$file"
+}
+
+read_vol() {
+  local vf
+  vf="$(path_for "$1" vol)"
+  [ -L "$vf" ] && rm -f "$vf"
+  [ -f "$vf" ] || return 1
+  cat "$vf" 2>/dev/null || return 1
+}
+
+launch_one() {
+  local id="$1" vol="$2" f="$SOUNDS_DIR/$id.ogg" pid
+  # Only ever play our own bundled assets, and never through a link.
+  [ -f "$f" ] && [ ! -L "$f" ] || return 0
+  # --no-config/--load-scripts=no: the user's mpv config and system scripts
+  # (mpris.so) are not wanted here — mpris.so hangs a detached mpv at "waiting
+  # for scripts" and would list every ambient loop as a media player. The
+  # pinned 48 kHz keeps the Bluetooth sink from stalling on a rate change.
+  setsid nohup "$MPV" --no-config --load-scripts=no --audio-samplerate=48000 \
+    --no-video --loop-file=inf --volume="$vol" \
+    --title="$MARK-$id" --audio-client-name="SoundHub Focus" --no-terminal --really-quiet "$f" >/dev/null 2>&1 &
+  pid=$!
+  write_state_file "$(path_for "$id" pid)" "$pid"
+  write_state_file "$(path_for "$id" vol)" "$vol"
+}
+
+# Kill processes playing files from OUR sounds dir that have no verified
+# pidfile (lost pidfiles, unclean states). Anything else is left alone.
+sweep_stale() {
+  local proc cmd pid id op owned
+  for proc in /proc/[0-9]*; do
+    [ -r "$proc/cmdline" ] || continue
+    cmd="$(tr '\0' ' ' < "$proc/cmdline" 2>/dev/null)" || continue
+    case "$cmd" in
+      *"$SOUNDS_DIR/"*.ogg*) ;;
+      *) continue ;;
+    esac
+    pid="${proc#/proc/}"
+    owned=0
+    for id in $KNOWN; do
+      op="$(track_pid "$id" 2>/dev/null)" || op=""
+      [ -n "$op" ] && [ "$op" = "$pid" ] && { owned=1; break; }
+    done
+    [ "$owned" = 1 ] || kill "$pid" 2>/dev/null || true
+  done
+}
+
+cmd="${1:-sync}"
+if [ "$cmd" != "sync" ] && [ "$cmd" != "stop" ]; then
+  echo "usage: soundhub-focus {sync [id:vol ...]|stop}" >&2
+  exit 1
+fi
+
+ensure_runtime_dir
+require_tools
+
+if [ "$cmd" = "stop" ]; then
+  for id in $KNOWN; do stop_track "$id"; done
+  sweep_stale
+  exit 0
+fi
+shift || true
+
+# Parse and validate ALL arguments before touching any process (fail-closed).
+declare -A WANT
+for kv in "$@"; do
+  id="${kv%%:*}"
+  vol="${kv##*:}"
+  is_known "$id" || die "unknown sound id: $id"
+  [[ "$vol" =~ ^[0-9]+$ ]] || vol=0
+  (( vol > 100 )) && vol=100
+  (( vol < 0 )) && vol=0
+  WANT["$id"]="$vol"
+done
+
+for id in $KNOWN; do
+  want="${WANT[$id]:-0}"
+  if pid="$(track_pid "$id")"; then
+    cached="$(read_vol "$id" 2>/dev/null)" || cached=""
+    if [ "$want" -gt 0 ] && [ "$cached" = "$want" ]; then
+      continue
+    fi
+    stop_track "$id"
+  fi
+  if [ "$want" -gt 0 ]; then
+    launch_one "$id" "$want"
+  fi
+done
+sweep_stale
+exit 0

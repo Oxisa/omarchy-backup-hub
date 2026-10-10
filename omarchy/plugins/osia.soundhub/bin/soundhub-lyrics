@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""SoundHub lyrics lookup (LRCLIB, https://lrclib.net — free, no key).
+
+  soundhub-lyrics --title T [--artist A] [--album B] [--duration SECONDS]
+
+Prints one JSON object:
+  {"ok": true, "found": bool, "synced": [[seconds, "line"], ...],
+   "plain": "text", "instrumental": bool, "query": "artist — title"}
+
+Browser players report messy metadata ("Artist - Song (Official Video)",
+a channel name as artist), so the title is cleaned and, if the exact lookup
+misses, a free-text search is tried. Results — including "nothing found" —
+are cached in ~/.cache/soundhub/lyrics for 30 days, so a song costs at most
+one network round trip.
+"""
+
+from __future__ import annotations
+
+import argparse
+import difflib
+import hashlib
+import json
+import os
+import re
+import sys
+import time
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+API = "https://lrclib.net/api"
+UA = "SoundHub (Omarchy plugin; https://github.com/Oxisa/omarchy-backup-hub)"
+CACHE = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "soundhub" / "lyrics"
+TTL = 30 * 24 * 3600
+MISS_TTL = 3 * 24 * 3600
+
+NOISE = re.compile(
+    r"\s*[\(\[\{][^\)\]\}]*(official|video|audio|lyrics?|lyric video|visualizer|clip|клип|"
+    r"remaster(ed)?|hd|4k|live|mv|m/v|explicit|премьера|official music video)[^\)\]\}]*[\)\]\}]",
+    re.I)
+FEAT = re.compile(r"\s+(feat\.?|ft\.?|featuring)\s+.*$", re.I)
+
+
+def clean_title(title: str) -> str:
+    t = NOISE.sub("", title or "")
+    t = FEAT.sub("", t)
+    t = re.sub(r"\s*\|.*$", "", t)            # "Song | Channel extras"
+    t = re.sub(r"\s{2,}", " ", t)
+    return t.strip(" -–—·\t")
+
+
+def clean_artist(artist: str) -> str:
+    a = re.sub(r"\s*-\s*Topic$", "", artist or "", flags=re.I)   # YouTube "Artist - Topic"
+    a = re.sub(r"VEVO$", "", a)
+    return FEAT.sub("", a).strip()
+
+
+def split_combined(title: str) -> tuple[str, str] | None:
+    m = re.match(r"^(.+?)\s+[-–—]\s+(.+)$", title)
+    return (m.group(1).strip(), m.group(2).strip()) if m else None
+
+
+def http_json(path: str, params: dict) -> object:
+    url = f"{API}/{path}?{urllib.parse.urlencode(params)}"
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    for attempt in range(2):                  # LRCLIB answers 503 now and then
+        try:
+            with urllib.request.urlopen(req, timeout=8) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            if e.code >= 500 and attempt == 0:
+                time.sleep(0.7)
+                continue
+            raise
+
+
+TS = re.compile(r"\[(\d+):(\d+(?:\.\d+)?)\]")
+
+
+def parse_lrc(text: str) -> list:
+    out = []
+    for line in (text or "").splitlines():
+        stamps = TS.findall(line)
+        if not stamps:
+            continue
+        words = TS.sub("", line).strip()
+        for m, s in stamps:
+            out.append([round(int(m) * 60 + float(s), 2), words])
+    out.sort(key=lambda x: x[0])
+    return out
+
+
+def shape(rec: dict | None, query: str) -> dict:
+    if not rec:
+        return {"ok": True, "found": False, "synced": [], "plain": "", "instrumental": False, "query": query}
+    return {"ok": True, "found": True,
+            "synced": parse_lrc(rec.get("syncedLyrics") or ""),
+            "plain": (rec.get("plainLyrics") or "").strip(),
+            "instrumental": bool(rec.get("instrumental")),
+            "query": query}
+
+
+def norm(text: str) -> str:
+    t = re.sub(r"[^\w\s]", " ", (text or "").lower())
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def similar(a: str, b: str) -> float:
+    a, b = norm(a), norm(b)
+    if not a or not b:
+        return 0.0
+    if a == b:
+        return 1.0
+    if len(a) > 3 and len(b) > 3 and (a in b or b in a):
+        return 0.9
+    return difflib.SequenceMatcher(None, a, b).ratio()
+
+
+def candidates(title: str, artist: str) -> list[tuple[str, str]]:
+    """(artist, title) guesses, most likely first. Handles "Artist - Song",
+    "Song - Artist", a channel name as artist and bilingual "A / B" titles."""
+    out: list[tuple[str, str]] = []
+
+    def add(a: str, t: str) -> None:
+        a, t = a.strip(), t.strip()
+        if t and (a, t) not in out:
+            out.append((a, t))
+
+    combo = split_combined(title)
+    if combo:
+        left, right = combo
+        if artist and similar(artist, right) > similar(artist, left):
+            add(artist, left); add(right, left)
+        else:
+            add(left, right); add(artist, right)
+        add(artist, left)
+    add(artist, title)
+    # bilingual pieces: "В Плену Грибов / Troll Bends Fir"
+    for a, t in list(out):
+        for piece in re.split(r"\s+/\s+", t):
+            if piece != t:
+                add(a, piece)
+        for piece in re.split(r"\s+/\s+", a):
+            if piece != a:
+                add(piece, t)
+    return out
+
+
+def acceptable(rec: dict, titles: list, duration: float) -> float:
+    """Score a search hit; 0 means reject (a different song)."""
+    name = rec.get("trackName") or ""
+    best = max((similar(name, t) for t in titles), default=0.0)
+    if best < 0.72:
+        return 0.0
+    if duration and rec.get("duration") and abs(float(rec["duration"]) - duration) > 8:
+        return 0.0
+    return best + (0.5 if rec.get("syncedLyrics") else 0.0)
+
+
+def lookup(title: str, artist: str, album: str, duration: float) -> dict:
+    title, artist = clean_title(title), clean_artist(artist)
+    if not title:
+        return shape(None, title)
+    cands = candidates(title, artist)
+    titles = [t for _, t in cands]
+
+    # 1) exact lookups: LRCLIB itself matches artist + title
+    for a, t in cands[:6]:
+        if not a:
+            continue
+        params = {"track_name": t, "artist_name": a}
+        if duration:
+            params["duration"] = int(round(duration))
+        rec = http_json("get", params)
+        if rec:
+            return shape(rec, f"{a} — {t}")
+
+    # 2) free-text search, accepted only when the title really matches
+    seen: set = set()
+    best, best_score, best_q = None, 0.0, ""
+    for a, t in cands[:4]:
+        q = f"{a} {t}".strip()
+        if q in seen:
+            continue
+        seen.add(q)
+        for rec in http_json("search", {"q": q}) or []:
+            sc = acceptable(rec, titles, duration)
+            if sc > best_score:
+                best, best_score = rec, sc
+                best_q = f"{rec.get('artistName')} — {rec.get('trackName')}"
+        if best_score >= 1.4:
+            break
+    return shape(best, best_q or titles[0])
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(prog="soundhub-lyrics")
+    ap.add_argument("--title", required=True)
+    ap.add_argument("--artist", default="")
+    ap.add_argument("--album", default="")
+    ap.add_argument("--duration", type=float, default=0.0)
+    a = ap.parse_args()
+
+    key = hashlib.sha1(f"{a.artist}\x01{a.title}".lower().encode()).hexdigest()
+    path = CACHE / f"{key}.json"
+    try:
+        cached = json.loads(path.read_text())
+        age = time.time() - path.stat().st_mtime
+        if age < (TTL if cached.get("found") else MISS_TTL):
+            print(json.dumps(cached, ensure_ascii=False))
+            return 0
+    except (OSError, ValueError):
+        pass
+
+    try:
+        res = lookup(a.title, a.artist, a.album, a.duration)
+    except Exception as exc:                     # network down etc.: report, don't cache
+        print(json.dumps({"ok": False, "found": False, "error": str(exc)[:200],
+                          "synced": [], "plain": ""}, ensure_ascii=False))
+        return 1
+
+    CACHE.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(res, ensure_ascii=False))
+    tmp.replace(path)
+    print(json.dumps(res, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

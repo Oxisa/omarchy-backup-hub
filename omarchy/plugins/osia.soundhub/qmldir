@@ -1,0 +1,17 @@
+singleton CavaHub 1.0 CavaHub.qml
+BarWidget 1.0 BarWidget.qml
+CoverColors 1.0 CoverColors.qml
+EqPage 1.0 EqPage.qml
+FocusPage 1.0 FocusPage.qml
+FocusState 1.0 FocusState.qml
+HubSlider 1.0 HubSlider.qml
+LyricsColumn 1.0 LyricsColumn.qml
+Media 1.0 Media.qml
+MixerPage 1.0 MixerPage.qml
+NowPlaying 1.0 NowPlaying.qml
+Panel 1.0 Panel.qml
+PlayerColumn 1.0 PlayerColumn.qml
+SettingsPage 1.0 SettingsPage.qml
+SoundPage 1.0 SoundPage.qml
+Spectrum 1.0 Spectrum.qml
+Vinyl 1.0 Vinyl.qml

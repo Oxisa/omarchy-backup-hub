@@ -1,0 +1,830 @@
+#!/usr/bin/env python3
+"""SoundHub mixer backend (Mixline-style routing on PipeWire).
+
+Model
+  sources  application playback (grouped per app) and microphones
+  mixes    virtual sinks we own ("Personal", "Stream", ...): each mix sends
+           its audio to an output device, or nowhere (virtual only, for OBS /
+           Discord to capture "Monitor of <mix>"); optional "monitor" also
+           plays it on a listening device
+  cables   source -> mix, each with its own gain and mute
+
+PipeWire plumbing
+  * soundhub-mixes.service runs `pipewire -c soundhub-mixes.conf`, hosting
+    the mix sinks (module-loopback: sink side "soundhub_mix_<id>", stream
+    side "soundhub_mix_<id>.out" -> output) and one silent null sink
+    "soundhub_void".
+  * every cable is a `pw-loopback` "send": an input stream (not a sink, so it
+    stays out of device lists) whose output goes into the mix with the
+    cable's gain as its volume.
+  * a routed app is pointed at soundhub_void (so WirePlumber stops sending it
+    to the default speakers) and its ports are linked into its sends.
+    Apps without cables are never touched.
+  * the daemon (`soundhub-mix daemon`, soundhub-mixd.service) watches the
+    graph with pw-mon and re-applies everything when apps or devices come
+    and go. Approach inspired by Oma Aux (sam0110, MIT).
+
+Presets: the whole set-up in one click. A preset holds its mixes, cables,
+the output device (and whether it plays through the equalizer), the
+microphone, and its own device folders (purely visual grouping). The active
+preset is saved on every change; switching restores another one.
+
+CLI (prints JSON): snapshot | mix-add NAME | mix-set ID key=value... |
+  mix-remove ID | cable-set SRCKEY MIXID gain=0.8 muted=0 | cable-remove
+  SRCKEY MIXID | preset-add NAME | preset-switch ID | preset-set ID name=X |
+  preset-remove ID | folder-add out|in NAME [collapsed=1] [devices=a,b] |
+  folder-set out|in FID name=X collapsed=0|1 | folder-remove out|in FID |
+  device-folder out|in DEVICE FID|- | daemon | ensure-service
+"""
+
+from __future__ import annotations
+
+import copy
+import fcntl
+import hashlib
+import json
+import os
+import signal
+import subprocess
+import sys
+import threading
+import time
+import uuid
+from pathlib import Path
+
+CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+STATE = CONFIG_HOME / "soundhub" / "mixer.json"
+CONF = CONFIG_HOME / "pipewire" / "soundhub-mixes.conf"
+UNIT_DIR = CONFIG_HOME / "systemd" / "user"
+MIX_UNIT = "soundhub-mixes.service"
+DAEMON_UNIT = "soundhub-mixd.service"
+VOID = "soundhub_void"
+MIX_PREFIX = "soundhub_mix_"
+SEND_PREFIX = "soundhub_send_"
+SELF = os.path.realpath(__file__)
+
+COLORS = ["#7daea3", "#d8a657", "#d3869b", "#a9b665", "#e78a4e", "#89b482"]
+
+
+def run(args: list[str], timeout: float = 5.0) -> subprocess.CompletedProcess:
+    return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+
+
+# ---- state ---------------------------------------------------------------------
+
+def new_preset(name: str = "") -> dict:
+    return {"id": uuid.uuid4().hex[:6], "name": name, "mixes": [], "cables": [],
+            "output": "", "eq": False, "mic": "", "folders": {"out": [], "in": []}}
+
+
+def default_state() -> dict:
+    p = new_preset()
+    return {"version": 2, "mixes": [], "cables": [], "presets": [p], "active": p["id"]}
+
+
+def load() -> dict:
+    try:
+        s = json.loads(STATE.read_text())
+        if isinstance(s, dict) and isinstance(s.get("mixes"), list) and isinstance(s.get("cables"), list):
+            if not s.get("presets"):                    # v1 -> v2: current set-up becomes the first preset
+                p = new_preset()
+                p["mixes"], p["cables"] = copy.deepcopy(s["mixes"]), copy.deepcopy(s["cables"])
+                s["presets"], s["active"], s["version"] = [p], p["id"], 2
+                save(s)                                    # keep the new preset id stable
+            for p in s["presets"]:
+                p.setdefault("folders", {"out": [], "in": []})
+                p["folders"].setdefault("out", []); p["folders"].setdefault("in", [])
+            if not active_preset(s):
+                s["active"] = s["presets"][0]["id"]
+            return s
+    except (OSError, ValueError):
+        pass
+    return default_state()
+
+
+def active_preset(s: dict) -> dict | None:
+    return next((p for p in s.get("presets", []) if p["id"] == s.get("active")), None)
+
+
+def save(s: dict) -> None:
+    p = active_preset(s)                                  # the active preset follows every change
+    if p is not None:
+        p["mixes"], p["cables"] = copy.deepcopy(s["mixes"]), copy.deepcopy(s["cables"])
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = STATE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(s, indent=1, ensure_ascii=False))
+    tmp.replace(STATE)
+
+
+def mix_by_id(s: dict, mid: str) -> dict | None:
+    return next((m for m in s["mixes"] if m["id"] == mid), None)
+
+
+def cable_id(src: str, mid: str) -> str:
+    return hashlib.sha1(f"{src}\x01{mid}".encode()).hexdigest()[:10]
+
+
+# ---- graph ---------------------------------------------------------------------
+
+def dump() -> list:
+    r = run(["pw-dump"], 6.0)
+    try:
+        return json.loads(r.stdout) if r.returncode == 0 else []
+    except ValueError:
+        return []
+
+
+def props(o: dict) -> dict:
+    return (o.get("info") or {}).get("props") or {}
+
+
+class Graph:
+    def __init__(self, objs: list):
+        self.nodes = {o["id"]: o for o in objs if o.get("type") == "PipeWire:Interface:Node"}
+        self.ports = [o for o in objs if o.get("type") == "PipeWire:Interface:Port"]
+        self.links = [o for o in objs if o.get("type") == "PipeWire:Interface:Link"]
+        self.targets = {}                                  # node id -> target.object metadata
+        for o in objs:
+            if o.get("type") == "PipeWire:Interface:Metadata" and (o.get("props") or {}).get("metadata.name") == "default":
+                for e in o.get("metadata") or []:
+                    if e.get("key") == "target.object":
+                        self.targets[e.get("subject")] = str(e.get("value"))
+        self.by_name = {}
+        for nid, n in self.nodes.items():
+            nm = props(n).get("node.name")
+            if nm:
+                self.by_name.setdefault(nm, nid)
+
+    def ports_of(self, nid: int, direction: str, monitor: bool = False) -> dict:
+        """channel -> port id for a node's input/output ports."""
+        out = {}
+        for p in self.ports:
+            pp = props(p)
+            if p.get("info", {}).get("direction") != direction or pp.get("node.id") != nid:
+                continue
+            is_mon = bool(pp.get("port.monitor"))
+            if is_mon != monitor:
+                continue
+            ch = pp.get("audio.channel") or pp.get("port.name", "").split("_")[-1]
+            out[str(ch)] = p["id"]
+        return out
+
+    def linked(self, out_port: int, in_port: int) -> bool:
+        return any(l["info"].get("output-port-id") == out_port and l["info"].get("input-port-id") == in_port
+                   for l in self.links)
+
+
+def app_key(p: dict) -> str:
+    return "app:" + str(p.get("application.process.binary") or p.get("application.name") or p.get("node.name") or "?").lower()
+
+
+def is_ours(name: str) -> bool:
+    return name.startswith("soundhub_")
+
+
+def playback_streams(g: Graph) -> dict:
+    """app key -> {label, icon, nodes:[ids]} for audio playback streams."""
+    apps: dict = {}
+    for nid, n in g.nodes.items():
+        p = props(n)
+        if p.get("media.class") != "Stream/Output/Audio":
+            continue
+        name = str(p.get("node.name") or "")
+        if is_ours(name) or name.startswith("omarchy_") or p.get("media.role") == "DSP":
+            continue
+        key = app_key(p)
+        a = apps.setdefault(key, {"key": key, "kind": "app", "nodes": [],
+                                  "label": str(p.get("application.name") or p.get("node.description") or name),
+                                  "icon": str(p.get("application.icon-name") or "")})
+        a["nodes"].append(nid)
+    return apps
+
+
+def microphones(g: Graph) -> dict:
+    mics = {}
+    for nid, n in g.nodes.items():
+        p = props(n)
+        if p.get("media.class") != "Audio/Source" or is_ours(str(p.get("node.name") or "")):
+            continue
+        key = "mic:" + str(p.get("node.name"))
+        mics[key] = {"key": key, "kind": "mic", "nodes": [nid],
+                     "label": str(p.get("node.nick") or p.get("node.description") or p.get("node.name")),
+                     "icon": "audio-input-microphone"}
+    return mics
+
+
+def outputs(g: Graph) -> list:
+    out = []
+    for nid, n in g.nodes.items():
+        p = props(n)
+        name = str(p.get("node.name") or "")
+        if p.get("media.class") != "Audio/Sink" or name == VOID or name.startswith(MIX_PREFIX):
+            continue
+        out.append({"name": name, "id": nid, "label": str(p.get("node.nick") or p.get("node.description") or name)})
+    return out
+
+
+EQ_BIN = os.path.join(os.path.dirname(SELF), "soundhub-eq")
+EQ_STATE = CONFIG_HOME / "soundhub" / "eq.json"
+
+
+def eq_state() -> dict:
+    try:
+        return json.loads(EQ_STATE.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def default_source() -> str:
+    r = run(["pactl", "get-default-source"])
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def capture_live(p: dict) -> None:
+    """Remember where sound and microphone are right now in preset p."""
+    ds = default_sink()
+    if ds == "soundhub_eq":
+        p["output"], p["eq"] = eq_state().get("target", ""), True
+    elif ds and not ds.startswith(MIX_PREFIX) and ds != VOID:
+        p["output"], p["eq"] = ds, False
+    mic = default_source()
+    if mic:
+        p["mic"] = mic
+
+
+def apply_live(p: dict) -> None:
+    """Move sound/mic to the preset's devices (only those that exist now)."""
+    g = Graph(dump())
+    out = p.get("output") or ""
+    if out and out in g.by_name:
+        eqs = eq_state()
+        if p.get("eq"):
+            if eqs.get("enabled") and default_sink() == "soundhub_eq":
+                if eqs.get("target") != out:
+                    run([EQ_BIN, "retarget", out], 10)
+            else:
+                run([EQ_BIN, "enable", "--target", out], 15)
+        else:
+            if eqs.get("enabled"):
+                run([EQ_BIN, "disable"], 10)
+            run(["pactl", "set-default-sink", out])
+    mic = p.get("mic") or ""
+    if mic and mic in g.by_name:
+        run(["pactl", "set-default-source", mic])
+
+
+def default_sink() -> str:
+    r = run(["pactl", "get-default-sink"])
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+# ---- mixes host (pipewire -c) ------------------------------------------------
+# Everything here is a loopback module: a client-side `pipewire -c` exports
+# module nodes to the server, but context.objects would stay local and
+# invisible, so the silent sink is a loopback whose output goes nowhere.
+
+def q(v: str) -> str:
+    return json.dumps(v, ensure_ascii=False)
+
+
+def config_text(s: dict) -> str:
+    mods = []
+    for m in s["mixes"]:
+        out = m.get("output") or ""
+        if out:
+            pb = f"target.object = {q(out)}\n          node.dont-reconnect = false"
+        else:
+            pb = "node.autoconnect = false"
+        mods.append(f"""  {{ name = libpipewire-module-loopback
+    args = {{
+      node.description = {q(m["name"])}
+      audio.position = [ FL FR ]
+      capture.props = {{
+        node.name = {q(MIX_PREFIX + m["id"])}
+        node.description = {q("SoundHub · " + m["name"])}
+        media.class = Audio/Sink
+      }}
+      playback.props = {{
+        node.name = {q(MIX_PREFIX + m["id"] + ".out")}
+        node.description = {q("SoundHub · " + m["name"] + " (out)")}
+        media.role = "DSP"
+          {pb}
+      }}
+    }}
+  }}""")
+    return f"""# Managed by SoundHub (osia.soundhub) mixer. Rewritten when mixes change.
+context.properties = {{ log.level = 0 }}
+context.spa-libs = {{
+    audio.convert.* = audioconvert/libspa-audioconvert
+    support.*       = support/libspa-support
+}}
+context.modules = [
+  {{ name = libpipewire-module-rt args = {{ }} flags = [ ifexists nofail ] }}
+  {{ name = libpipewire-module-protocol-native }}
+  {{ name = libpipewire-module-client-node }}
+  {{ name = libpipewire-module-adapter }}
+{chr(10).join(mods)}
+  {{ name = libpipewire-module-loopback
+    args = {{
+      node.description = "SoundHub (routed apps)"
+      audio.position = [ FL FR ]
+      capture.props = {{
+        node.name = {q(VOID)}
+        node.description = "SoundHub (routed apps)"
+        media.class = Audio/Sink
+        node.virtual = true
+      }}
+      playback.props = {{
+        node.name = {q(VOID + ".out")}
+        node.autoconnect = false
+        node.passive = true
+      }}
+    }}
+  }}
+]
+"""
+
+
+def unit_text(desc: str, exec_start: str, after: str) -> str:
+    return f"""[Unit]
+Description={desc}
+After={after}
+Requires=pipewire.service
+
+[Service]
+ExecStart={exec_start}
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=pipewire.service
+"""
+
+
+def write_host(s: dict) -> bool:
+    """Write config + units; True if the mixes config changed."""
+    CONF.parent.mkdir(parents=True, exist_ok=True)
+    UNIT_DIR.mkdir(parents=True, exist_ok=True)
+    text = config_text(s)
+    changed = not CONF.exists() or CONF.read_text() != text
+    if changed:
+        tmp = CONF.with_suffix(".tmp"); tmp.write_text(text); tmp.replace(CONF)
+    units = {
+        MIX_UNIT: unit_text("SoundHub mixes (PipeWire)", "/usr/bin/pipewire -c soundhub-mixes.conf", "pipewire.service"),
+        DAEMON_UNIT: unit_text("SoundHub mixer routing", f"{SELF} daemon", f"pipewire.service {MIX_UNIT}"),
+    }
+    reload = False
+    for name, body in units.items():
+        f = UNIT_DIR / name
+        if not f.exists() or f.read_text() != body:
+            f.write_text(body); reload = True
+    if reload:
+        run(["systemctl", "--user", "daemon-reload"])
+    return changed
+
+
+def apply_host(s: dict) -> None:
+    changed = write_host(s)
+    if not s["mixes"]:
+        run(["systemctl", "--user", "disable", "--now", DAEMON_UNIT, MIX_UNIT])
+        return
+    run(["systemctl", "--user", "enable", MIX_UNIT, DAEMON_UNIT])
+    if changed or run(["systemctl", "--user", "is-active", "--quiet", MIX_UNIT]).returncode != 0:
+        run(["systemctl", "--user", "restart", MIX_UNIT])
+    poke()
+
+
+# ---- reconcile (daemon) --------------------------------------------------------
+
+class Router:
+    def __init__(self):
+        self.sends: dict = {}          # cable id -> Popen
+        self.lock = threading.Lock()
+
+    def send_name(self, cid: str) -> str:
+        return SEND_PREFIX + cid
+
+    def ensure_send(self, cid: str, mid: str) -> None:
+        p = self.sends.get(cid)
+        if p and p.poll() is None:
+            return
+        name = self.send_name(cid)
+        self.sends[cid] = subprocess.Popen(
+            ["pw-loopback", "-n", name,
+             "--capture-props", f"media.class=Stream/Input/Audio node.name={name} node.autoconnect=false "
+                                f"node.description=SoundHub-send node.dont-reconnect=true",
+             "--playback-props", f"node.name={name}.out target.object={MIX_PREFIX + mid} media.role=DSP"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+    def stop_send(self, cid: str) -> None:
+        p = self.sends.pop(cid, None)
+        if p and p.poll() is None:
+            p.terminate()
+            try:
+                p.wait(2)
+            except subprocess.TimeoutExpired:
+                p.kill()
+
+    def reconcile(self) -> None:
+        with self.lock:
+            s = load()
+            g = Graph(dump())
+            apps, mics = playback_streams(g), microphones(g)
+            mixes = {m["id"]: m for m in s["mixes"]}
+            wanted = {}
+            for c in s["cables"]:
+                if c["mix"] in mixes and (c["src"] in apps or c["src"] in mics):
+                    wanted[cable_id(c["src"], c["mix"])] = c
+            for cid in list(self.sends):
+                if cid not in wanted:
+                    self.stop_send(cid)
+            for cid, c in wanted.items():
+                self.ensure_send(cid, c["mix"])
+
+            time.sleep(0.25)
+            g = Graph(dump())
+
+            # gains
+            for cid, c in wanted.items():
+                nid = g.by_name.get(self.send_name(cid) + ".out")
+                if nid:
+                    vol = 0.0 if c.get("muted") else max(0.0, min(1.5, float(c.get("gain", 1.0))))
+                    run(["wpctl", "set-volume", str(nid), f"{vol:.3f}"])
+
+            # sends -> their mix (survives the mixes host restarting)
+            for cid, c in wanted.items():
+                out_id = g.by_name.get(self.send_name(cid) + ".out")
+                mix_id = g.by_name.get(MIX_PREFIX + c["mix"])
+                if not out_id or not mix_id:
+                    continue
+                outs, ins = g.ports_of(out_id, "output"), g.ports_of(mix_id, "input")
+                for ch in ("FL", "FR"):
+                    if ch in outs and ch in ins and not g.linked(outs[ch], ins[ch]):
+                        run(["pw-link", str(outs[ch]), str(ins[ch])])
+
+            # links: source ports -> send inputs
+            routed_apps = set()
+            for cid, c in wanted.items():
+                send_id = g.by_name.get(self.send_name(cid))
+                if not send_id:
+                    continue
+                ins = g.ports_of(send_id, "input")
+                src = apps.get(c["src"]) or mics.get(c["src"])
+                if c["src"] in apps:
+                    routed_apps.add(c["src"])
+                for nid in src["nodes"]:
+                    outs = g.ports_of(nid, "output")
+                    pairs = [(outs[ch], ins[ch]) for ch in ("FL", "FR") if ch in outs and ch in ins]
+                    if not pairs and len(outs) == 1 and ins:       # mono source -> both sides
+                        o = next(iter(outs.values()))
+                        pairs = [(o, i) for i in ins.values()]
+                    for o, i in pairs:
+                        if not g.linked(o, i):
+                            run(["pw-link", str(o), str(i)])
+
+            # routed apps play into the void, not the speakers
+            void_id = g.by_name.get(VOID)
+            for key, a in apps.items():
+                for nid in a["nodes"]:
+                    current = g.targets.get(nid, "")
+                    if key in routed_apps and void_id:
+                        if current != VOID:
+                            run(["pw-metadata", str(nid), "target.object", VOID])
+                    elif current == VOID:                    # only undo what we did
+                        run(["pw-metadata", "-d", str(nid), "target.object"])
+
+            # monitors: mix sink monitor -> listening device
+            for m in s["mixes"]:
+                mon = m.get("monitor") or ""
+                mix_id = g.by_name.get(MIX_PREFIX + m["id"])
+                dev_id = g.by_name.get(mon) if mon else None
+                if not mix_id or not dev_id or mon == m.get("output"):
+                    continue
+                outs = g.ports_of(mix_id, "output", monitor=True)
+                ins = g.ports_of(dev_id, "input")
+                for ch in ("FL", "FR"):
+                    if ch in outs and ch in ins and not g.linked(outs[ch], ins[ch]):
+                        run(["pw-link", str(outs[ch]), str(ins[ch])])
+
+            # mixes back on their device: a mix whose device vanished was moved to
+            # the default by WirePlumber and is not moved back on its own
+            for m in s["mixes"]:
+                out = m.get("output") or ""
+                out_id = g.by_name.get(MIX_PREFIX + m["id"] + ".out")
+                dev_id = g.by_name.get(out) if out else None
+                if not out_id or not dev_id:
+                    continue
+                linked = {l["info"].get("input-node-id") for l in g.links if l["info"].get("output-node-id") == out_id}
+                if linked and dev_id not in linked:
+                    run(["pw-metadata", str(out_id), "target.object", out])
+
+            # mix volumes / mute
+            for m in s["mixes"]:
+                nid = g.by_name.get(MIX_PREFIX + m["id"])
+                if nid:
+                    run(["wpctl", "set-volume", str(nid), f"{float(m.get('volume', 1.0)):.3f}"])
+                    run(["wpctl", "set-mute", str(nid), "1" if m.get("muted") else "0"])
+
+    def shutdown(self) -> None:
+        for cid in list(self.sends):
+            self.stop_send(cid)
+        # hand routed apps back to the default output
+        g = Graph(dump())
+        for nid, target in g.targets.items():
+            if target == VOID:
+                run(["pw-metadata", "-d", str(nid), "target.object"])
+
+
+def daemon() -> int:
+    router = Router()
+    stop = threading.Event()
+    kick = threading.Event()
+    kick.set()
+
+    def on_signal(sig, _frame):
+        if sig == signal.SIGHUP:
+            kick.set()
+        else:
+            stop.set(); kick.set()
+    signal.signal(signal.SIGHUP, on_signal)
+    signal.signal(signal.SIGTERM, on_signal)
+    signal.signal(signal.SIGINT, on_signal)
+
+    def watch():
+        while not stop.is_set():
+            try:
+                mon = subprocess.Popen(["pw-mon", "-N", "-a"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+                for line in mon.stdout:
+                    if stop.is_set():
+                        break
+                    if "added:" in line or "removed:" in line:
+                        kick.set()
+                mon.terminate()
+            except OSError:
+                pass
+            time.sleep(1)
+    threading.Thread(target=watch, daemon=True).start()
+
+    last_state = 0.0
+    while not stop.is_set():
+        kick.wait(10)
+        if stop.is_set():
+            break
+        time.sleep(0.4)                                   # let bursts of graph events settle
+        kick.clear()
+        try:
+            mt = STATE.stat().st_mtime if STATE.exists() else 0
+            if mt != last_state:
+                last_state = mt
+            router.reconcile()
+        except Exception as exc:                          # keep routing alive
+            print(f"reconcile failed: {exc}", file=sys.stderr, flush=True)
+    router.shutdown()
+    return 0
+
+
+# ---- CLI -----------------------------------------------------------------------
+
+def snapshot() -> dict:
+    s = load()
+    g = Graph(dump())
+    apps, mics = playback_streams(g), microphones(g)
+    live_mix = {m["id"]: bool(g.by_name.get(MIX_PREFIX + m["id"])) for m in s["mixes"]}
+    srcs = [dict(a, nodeIds=a["nodes"], nodes=len(a["nodes"]), live=True)
+            for a in list(apps.values()) + list(mics.values())]
+    known = {x["key"] for x in srcs}
+    for c in s["cables"]:                                  # remembered apps that aren't playing now
+        if c["src"] not in known:
+            known.add(c["src"])
+            srcs.append({"key": c["src"], "kind": c["src"].split(":")[0], "label": c.get("label") or c["src"].split(":", 1)[1],
+                         "icon": "", "nodeIds": [], "nodes": 0, "live": False})
+    ap = active_preset(s) or {}
+
+    # Remember device names so an unplugged device still has a label, and keep
+    # listing the ones something refers to (a mix output/monitor, the preset's
+    # output or mic, a folder) as offline instead of letting them vanish.
+    live_outs = outputs(g)
+    known = s.setdefault("known", {})
+    changed = False
+    for o in live_outs:
+        if known.get(o["name"]) != o["label"]:
+            known[o["name"]] = o["label"]; changed = True
+    for m in mics.values():
+        name = m["key"][4:]
+        if known.get(name) != m["label"]:
+            known[name] = m["label"]; changed = True
+    if changed:
+        save(s)
+    live_names = {o["name"] for o in live_outs}
+    wanted_outs = set()
+    for m in s["mixes"]:
+        wanted_outs.update(x for x in (m.get("output"), m.get("monitor")) if x)
+    if ap.get("output"):
+        wanted_outs.add(ap["output"])
+    for f in ap.get("folders", {}).get("out", []):
+        wanted_outs.update(f["devices"])
+    wanted_outs.discard("soundhub_eq")
+    offline_outs = [{"name": n, "id": -1, "label": known.get(n, n), "live": False}
+                    for n in sorted(wanted_outs - live_names) if not n.startswith(MIX_PREFIX) and n != VOID]
+    live_mics = {k[4:] for k in mics}
+    wanted_mics = set(f_d for f in ap.get("folders", {}).get("in", []) for f_d in f["devices"])
+    if ap.get("mic"):
+        wanted_mics.add(ap["mic"])
+    for name in sorted(wanted_mics - live_mics):
+        if ("mic:" + name) not in known_keys(srcs):
+            srcs.append({"key": "mic:" + name, "kind": "mic", "label": known.get(name, name),
+                         "icon": "", "nodeIds": [], "nodes": 0, "live": False})
+    return {"ok": True, "sources": srcs, "mixes": [dict(m, live=live_mix.get(m["id"], False)) for m in s["mixes"]],
+            "cables": s["cables"], "outputs": [dict(o, live=True) for o in live_outs] + offline_outs,
+            "defaultSink": default_sink(),
+            "presets": [{"id": p["id"], "name": p.get("name", "")} for p in s["presets"]],
+            "activePreset": s.get("active", ""), "folders": ap.get("folders", {"out": [], "in": []}),
+            "running": run(["systemctl", "--user", "is-active", "--quiet", DAEMON_UNIT]).returncode == 0}
+
+
+def known_keys(srcs: list) -> set:
+    return {x["key"] for x in srcs}
+
+
+def parse_kv(items: list[str]) -> dict:
+    out = {}
+    for it in items:
+        if "=" in it:
+            k, v = it.split("=", 1)
+            out[k] = v
+    return out
+
+
+def poke() -> None:
+    """Ask the daemon to re-apply state. A daemon that isn't running yet reads
+    the state on start, so it is started instead of signalled — a SIGHUP that
+    lands before Python installs its handler would kill it."""
+    if run(["systemctl", "--user", "is-active", "--quiet", DAEMON_UNIT]).returncode == 0:
+        run(["systemctl", "--user", "kill", "--kill-whom=main", "-s", "HUP", DAEMON_UNIT])
+    else:
+        run(["systemctl", "--user", "start", DAEMON_UNIT])
+
+
+def main(argv: list[str]) -> int:
+    if not argv:
+        print(__doc__)
+        return 2
+    cmd, rest = argv[0], argv[1:]
+    if cmd == "daemon":
+        return daemon()
+    # one command at a time: the panel and the CLI both read-modify-write the
+    # state file, and two overlapping writers would drop one change
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    lock = open(STATE.with_suffix(".lock"), "w")
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    s = load()
+    if cmd == "snapshot":
+        pass
+    elif cmd == "mix-add":
+        name = (rest[0] if rest else "Mix").strip()[:40] or "Mix"
+        out = rest[1] if len(rest) > 1 else default_sink()
+        if out.startswith(MIX_PREFIX) or out == VOID:
+            out = ""
+        s["mixes"].append({"id": uuid.uuid4().hex[:6], "name": name, "output": out, "monitor": "",
+                           "volume": 1.0, "muted": False, "color": COLORS[len(s["mixes"]) % len(COLORS)]})
+        save(s); apply_host(s)
+    elif cmd == "mix-set" and rest:
+        m = mix_by_id(s, rest[0])
+        if not m:
+            return out_json({"ok": False, "error": "no such mix"})
+        kv = parse_kv(rest[1:])
+        host_change = False
+        live_output = None
+        if "name" in kv:
+            m["name"] = kv["name"].strip()[:40] or m["name"]; host_change = True
+        if "output" in kv:
+            new = kv["output"]
+            if new and m.get("output"):
+                live_output = new        # device -> device: retarget live, no restart
+            else:
+                host_change = True       # to/from "virtual only" changes the stream's autoconnect
+            m["output"] = new
+        if "monitor" in kv:
+            m["monitor"] = kv["monitor"]
+        if "volume" in kv:
+            m["volume"] = max(0.0, min(1.5, float(kv["volume"])))
+        if "muted" in kv:
+            m["muted"] = kv["muted"] in ("1", "true", "yes")
+        if "color" in kv:
+            m["color"] = kv["color"][:9]
+        save(s)
+        if host_change:
+            apply_host(s)
+        else:
+            if live_output:
+                write_host(s)            # keep the config in step for the next start
+                out_id = Graph(dump()).by_name.get(MIX_PREFIX + m["id"] + ".out")
+                if out_id:
+                    run(["pw-metadata", str(out_id), "target.object", live_output])
+            poke()
+    elif cmd == "mix-remove" and rest:
+        s["mixes"] = [m for m in s["mixes"] if m["id"] != rest[0]]
+        s["cables"] = [c for c in s["cables"] if c["mix"] != rest[0]]
+        save(s); apply_host(s)
+    elif cmd == "cable-set" and len(rest) >= 2:
+        src, mid = rest[0], rest[1]
+        if not mix_by_id(s, mid):
+            return out_json({"ok": False, "error": "no such mix"})
+        kv = parse_kv(rest[2:])
+        c = next((c for c in s["cables"] if c["src"] == src and c["mix"] == mid), None)
+        if not c:
+            c = {"src": src, "mix": mid, "gain": 1.0, "muted": False}
+            s["cables"].append(c)
+        if "gain" in kv:
+            c["gain"] = max(0.0, min(1.5, float(kv["gain"])))
+        if "muted" in kv:
+            c["muted"] = kv["muted"] in ("1", "true", "yes")
+        if "label" in kv:
+            c["label"] = kv["label"][:60]
+        save(s); poke()
+    elif cmd == "cable-remove" and len(rest) >= 2:
+        s["cables"] = [c for c in s["cables"] if not (c["src"] == rest[0] and c["mix"] == rest[1])]
+        save(s); poke()
+    elif cmd == "preset-add":
+        cur = active_preset(s)
+        if cur:
+            capture_live(cur)
+        p = copy.deepcopy(cur) if cur else new_preset()
+        p["id"], p["name"] = uuid.uuid4().hex[:6], (rest[0] if rest else "").strip()[:30]
+        s["presets"].append(p)
+        s["active"] = p["id"]                              # a copy of the current set-up: nothing to re-apply
+        save(s)
+    elif cmd == "preset-switch" and rest:
+        if not switch_preset(s, rest[0]):
+            return out_json({"ok": False, "error": "no such preset"})
+    elif cmd == "preset-set" and rest:
+        p = next((p for p in s["presets"] if p["id"] == rest[0]), None)
+        if p:
+            kv = parse_kv(rest[1:])
+            if "name" in kv:
+                p["name"] = kv["name"].strip()[:30]
+            save(s)
+    elif cmd == "preset-remove" and rest:
+        if len(s["presets"]) > 1:
+            if s["active"] == rest[0]:
+                switch_preset(s, next(p for p in s["presets"] if p["id"] != rest[0])["id"])
+            s["presets"] = [p for p in s["presets"] if p["id"] != rest[0]]
+            save(s)
+    elif cmd in ("folder-add", "folder-set", "folder-remove", "device-folder") and rest and rest[0] in ("out", "in"):
+        folders = active_preset(s)["folders"][rest[0]]
+        kv = parse_kv(rest[2:])
+        if cmd == "folder-add" and len(rest) >= 2:
+            devs = [d for d in kv.get("devices", "").split(",") if d]
+            for f in folders:                              # a device lives in one folder
+                f["devices"] = [d for d in f["devices"] if d not in devs]
+            folders.append({"id": uuid.uuid4().hex[:6], "name": rest[1].strip()[:30] or "?",
+                            "collapsed": kv.get("collapsed") in ("1", "true"), "devices": devs})
+        elif cmd == "folder-set" and len(rest) >= 2:
+            f = next((f for f in folders if f["id"] == rest[1]), None)
+            if f:
+                if "name" in kv:
+                    f["name"] = kv["name"].strip()[:30] or f["name"]
+                if "collapsed" in kv:
+                    f["collapsed"] = kv["collapsed"] in ("1", "true")
+        elif cmd == "folder-remove" and len(rest) >= 2:
+            folders[:] = [f for f in folders if f["id"] != rest[1]]
+        elif cmd == "device-folder" and len(rest) >= 3:
+            dev, fid = rest[1], rest[2]
+            for f in folders:
+                f["devices"] = [d for d in f["devices"] if d != dev]
+                if f["id"] == fid:
+                    f["devices"].append(dev)
+        save(s)
+    elif cmd == "ensure-service":
+        if s["mixes"]:
+            apply_host(s)
+    else:
+        return out_json({"ok": False, "error": f"unknown command {cmd}"})
+    return out_json(snapshot())
+
+
+def switch_preset(s: dict, pid: str) -> bool:
+    target = next((p for p in s["presets"] if p["id"] == pid), None)
+    if not target:
+        return False
+    cur = active_preset(s)
+    if cur and cur["id"] == pid:
+        return True
+    if cur:
+        capture_live(cur)
+        save(s)
+    s["active"] = pid
+    s["mixes"], s["cables"] = copy.deepcopy(target["mixes"]), copy.deepcopy(target["cables"])
+    save(s)
+    apply_host(s)
+    apply_live(target)
+    return True
+
+
+def out_json(obj: dict) -> int:
+    print(json.dumps(obj, ensure_ascii=False))
+    return 0 if obj.get("ok", True) else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
