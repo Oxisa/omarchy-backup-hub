@@ -16,6 +16,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 REPO_DIR="$(pwd)"
 APPS_DIR="$HOME/.local/share/applications"
+OMARCHY_APPS="/usr/share/omarchy/applications"
 
 # jq/curl: this script and the hooks; yt-dlp/ffmpeg/wl-clipboard: Omaloader;
 # brave-bin/chromium: the tunnel / direct browser split.
@@ -29,14 +30,27 @@ WEBAPPS_REMOVE=(
   "Google Photos" "HEY" "WhatsApp" "Zoom"
 )
 WEBAPPS_INSTALL=(
+  "X|https://x.com|tunnel"
   "YouTube|https://youtube.com|tunnel"
   "YouTube Music|https://music.youtube.com|tunnel"
+  "Twitch|https://twitch.tv|tunnel"
   "Reddit|https://reddit.com|tunnel"
+  "Telegram|https://web.telegram.org|tunnel"
   "Gmail|https://mail.google.com|tunnel"
   "Google Drive|https://drive.google.com|tunnel"
-  "Telegram|https://web.telegram.org|tunnel"
-  "Yandex Диск|https://disk.yandex.ru|direct"
+  "Google Docs|https://docs.google.com|tunnel"
+  "Google Translate|https://translate.google.com|tunnel"
+  "Claude|https://claude.ai|tunnel"
+  "ChatGPT|https://chatgpt.com|tunnel"
+  "Gemini|https://gemini.google.com|tunnel"
+  "GitHub|https://github.com|tunnel"
+  "Figma|https://figma.com|tunnel"
+  "Excalidraw|https://excalidraw.com|tunnel"
+  "Draw.io|https://app.diagrams.net|tunnel"
+  "Monkeytype|https://monkeytype.com|tunnel"
+  "Яндекс Диск|https://disk.yandex.ru|direct"
   "Яндекс Телемост|https://telemost.yandex.ru|direct"
+  "Яндекс Переводчик|https://translate.yandex.ru|direct"
   "Zona|https://w1.zona.im|direct"
 )
 
@@ -111,6 +125,9 @@ setup_webapps() {
     url="${rest%%|*}" route="${rest#*|}"
     if [ -f "$APPS_DIR/$name.desktop" ]; then
       echo "web app $name already installed"
+    elif [ -f "$OMARCHY_APPS/$name.desktop" ]; then
+      # One of Omarchy's own web apps (X, YouTube): reuse its launcher and icon.
+      cp "$OMARCHY_APPS/$name.desktop" "$APPS_DIR/" && echo "restored Omarchy web app $name"
     else
       # Empty icon argument: omarchy fetches the site's own icon.
       omarchy-webapp-install "$name" "$url" "" && echo "installed web app $name" \

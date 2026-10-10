@@ -32,7 +32,7 @@ git clone https://github.com/Oxisa/omarchy-backup-hub.git ~/.local/opt/omarchy-b
 
 ### Удалить
 
-Стандартные веб-приложения Omarchy, которые не нужны:
+Стандартные веб-приложения Omarchy, которые не нужны (X и YouTube остаются):
 
 ```bash
 for app in "Basecamp" "Discord" "Google Contacts" "Google Maps" "Google Messages" \
@@ -47,15 +47,30 @@ done
 
 | Название | Адрес | Маршрут |
 |---|---|---|
+| X | https://x.com | туннель |
 | YouTube | https://youtube.com | туннель |
 | YouTube Music | https://music.youtube.com | туннель |
+| Twitch | https://twitch.tv | туннель |
 | Reddit | https://reddit.com | туннель |
+| Telegram | https://web.telegram.org | туннель |
 | Gmail | https://mail.google.com | туннель |
 | Google Drive | https://drive.google.com | туннель |
-| Telegram | https://web.telegram.org | туннель |
-| Yandex Диск | https://disk.yandex.ru | напрямую |
+| Google Docs | https://docs.google.com | туннель |
+| Google Translate | https://translate.google.com | туннель |
+| Claude | https://claude.ai | туннель |
+| ChatGPT | https://chatgpt.com | туннель |
+| Gemini | https://gemini.google.com | туннель |
+| GitHub | https://github.com | туннель |
+| Figma | https://figma.com | туннель |
+| Excalidraw | https://excalidraw.com | туннель |
+| Draw.io | https://app.diagrams.net | туннель |
+| Monkeytype | https://monkeytype.com | туннель |
+| Яндекс Диск | https://disk.yandex.ru | напрямую |
 | Яндекс Телемост | https://telemost.yandex.ru | напрямую |
+| Яндекс Переводчик | https://translate.yandex.ru | напрямую |
 | Zona | https://w1.zona.im | напрямую |
+
+X и YouTube — стандартные веб-приложения Omarchy: если их нет, `install.sh` восстанавливает их из `/usr/share/omarchy/applications/` с родными иконками.
 
 ## Туннель и браузеры
 
