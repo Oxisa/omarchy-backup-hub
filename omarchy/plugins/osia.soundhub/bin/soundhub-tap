@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Feed SoundHub's spectrum from every device that is playing.
+
+cava runs as node "soundhub_cava" with autoconnect off. This links the
+monitor ports of every physical output that currently has audio coming in
+(headphones, speakers, ... — the EQ's device and each mix's device alike)
+into cava's input, and drops links to devices that went quiet or away.
+PipeWire mixes several links on one input, so the spectrum shows everything
+you hear, wherever the mixer sends it. Run it whenever the graph changes;
+it is idempotent and quick (one pw-dump).
+"""
+
+import json
+import subprocess
+import sys
+
+TAP = "soundhub_cava"
+
+
+def run(args):
+    return subprocess.run(args, capture_output=True, text=True, timeout=5)
+
+
+def main() -> int:
+    r = run(["pw-dump"])
+    if r.returncode != 0:
+        return 1
+    objs = json.loads(r.stdout)
+    nodes = {o["id"]: o for o in objs if o.get("type") == "PipeWire:Interface:Node"}
+    ports = [o for o in objs if o.get("type") == "PipeWire:Interface:Port"]
+    links = [o for o in objs if o.get("type") == "PipeWire:Interface:Link"]
+
+    def props(o):
+        return (o.get("info") or {}).get("props") or {}
+
+    tap = next((i for i, n in nodes.items() if props(n).get("node.name") == TAP), None)
+    if tap is None:
+        return 0
+    tap_in = {}
+    for p in ports:
+        pp = props(p)
+        if pp.get("node.id") == tap and p["info"].get("direction") == "input":
+            tap_in[str(pp.get("audio.channel") or pp.get("port.name", "").split("_")[-1])] = p["id"]
+
+    # physical sinks with something playing into them
+    feeding = {}
+    for l in links:
+        dst = l["info"].get("input-node-id")
+        if dst in nodes:
+            feeding.setdefault(dst, set()).add(l["info"].get("output-node-id"))
+    playing = set()
+    for nid, n in nodes.items():
+        pp = props(n)
+        name = str(pp.get("node.name") or "")
+        if pp.get("media.class") != "Audio/Sink" or name.startswith("soundhub_"):
+            continue
+        if feeding.get(nid):
+            playing.add(nid)
+
+    wanted = set()                                      # (monitor port, tap port)
+    for p in ports:
+        pp = props(p)
+        if pp.get("node.id") in playing and pp.get("port.monitor") and p["info"].get("direction") == "output":
+            ch = str(pp.get("audio.channel") or "")
+            if ch in tap_in:
+                wanted.add((p["id"], tap_in[ch]))
+            elif "MONO" in tap_in:
+                wanted.add((p["id"], tap_in["MONO"]))
+            elif len(tap_in) == 1:
+                wanted.add((p["id"], next(iter(tap_in.values()))))
+
+    have = {}
+    for l in links:
+        if l["info"].get("input-node-id") == tap:
+            have[(l["info"].get("output-port-id"), l["info"].get("input-port-id"))] = l["id"]
+
+    for pair in wanted - set(have):
+        run(["pw-link", str(pair[0]), str(pair[1])])
+    for pair, lid in have.items():
+        if pair not in wanted:
+            run(["pw-link", "-d", str(lid)])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

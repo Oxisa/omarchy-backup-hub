@@ -18,11 +18,9 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, Number(v) || 0)) }
 
 var asciiRange = 1000
 
-// source: a PipeWire sink node name to listen to (its monitor), or "" for auto.
-// The native pipewire input is used for a named sink: through the pulse layer
-// WirePlumber re-routed the capture onto the EQ in front of the device, whose
-// monitor is near-silent.
-function cavaConfig(bars, framerate, source) {
+// cava reads from its own PipeWire input; what feeds it is decided by
+// bin/soundhub-tap (every playing device's monitor), not by cava itself.
+function cavaConfig(bars, framerate) {
   return [
     "[general]",
     "framerate = " + framerate,
@@ -30,8 +28,8 @@ function cavaConfig(bars, framerate, source) {
     "autosens = 1",
     "",
     "[input]",
-    "method = " + (source ? "pipewire" : "pulse"),
-    "source = " + (source ? source : "auto"),
+    "method = pipewire",
+    "source = auto",
     "",
     "[output]",
     "method = raw",

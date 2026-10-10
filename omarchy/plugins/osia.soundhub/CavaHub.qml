@@ -7,12 +7,13 @@ import "Model.js" as Model
 
 // One cava capture for the whole shell (a singleton): every bar — one per
 // monitor — and the panel read the same `levels`. Bars declare demand with
-// want(key, on); cava runs while anyone wants it. It runs only while `active`, so a silent desktop costs
-// nothing; frames are parsed into a plain array the views bind to.
-// It listens to the *physical* output (omarchy-audio-output-sink resolves
-// through the EQ) via cava's native pipewire input, pinned with PIPEWIRE_PROPS.
-// The default sink would be silent when apps go through a mixer mix straight
-// to the device, and the pulse path got moved onto the EQ's near-silent monitor.
+// want(key, on); cava runs while anyone wants it.
+// cava runs as node "soundhub_cava" with autoconnect off; bin/soundhub-tap
+// links the monitor of every device that is playing into it (headphones and
+// speakers alike — mixes can send sound to several devices at once), and is
+// re-run as the graph changes. Letting cava/WirePlumber pick one source went
+// wrong three ways: the default sink (silent when mixes bypass it), the EQ's
+// near-silent monitor, and the default microphone.
 Item {
   id: root
   visible: false
@@ -32,48 +33,27 @@ Item {
     (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/osia-soundhub-cava.conf"
 
   property int failures: 0
-  property string source: ""              // physical sink node name (pipewire input)
 
   function start() {
     if (proc.running || !active) return
-    // cava's pipewire input doesn't mark its stream as capturing a sink, so
-    // WirePlumber would hand it the default *microphone*. PIPEWIRE_PROPS adds
-    // the flags: capture the sink's monitor, and never move elsewhere.
     proc.command = ["sh", "-c", 'printf "%s" "$1" > "$2" && PIPEWIRE_PROPS="$3" exec cava -p "$2"', "cava",
-                    Model.cavaConfig(bars, framerate, source), configPath,
-                    source ? "{ stream.capture.sink = true node.dont-reconnect = true }" : ""]
+                    Model.cavaConfig(bars, framerate), configPath,
+                    "{ node.name = soundhub_cava node.autoconnect = false stream.capture.sink = true }"]
     proc.running = true
   }
 
-  // follow the output: re-resolve when the default sink changes or we start
-  readonly property var defaultSink: Pipewire.defaultAudioSink
-  onDefaultSinkChanged: resolveTimer.restart()
-  // devices coming and going (headphones unplugged / reconnected) too
+  // feed cava from every playing device; re-run as things change
+  readonly property string tapBin: decodeURIComponent(Qt.resolvedUrl("bin/soundhub-tap").toString().replace(/^file:\/\//, ""))
+  function tapNow() { if (active && !tap.running) tap.running = true }
+  Process { id: tap; command: [root.tapBin] }
   readonly property int sinkCount: {
     var n = Pipewire.nodes ? Pipewire.nodes.values : [], c = 0
-    for (var i = 0; i < n.length; i++) if (n[i] && n[i].isSink && !n[i].isStream) c++
+    for (var i = 0; i < n.length; i++) if (n[i] && n[i].isSink) c++
     return c
   }
-  onSinkCountChanged: resolveTimer.restart()
-  Timer { id: resolveTimer; interval: 400; onTriggered: if (!resolver.running) resolver.running = true }
-  Process {
-    id: resolver
-    command: ["omarchy-audio-output-sink"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var sink = String(text).trim()
-        var src = sink
-        if (src !== root.source) {
-          root.source = src
-          root.failures = 0
-          if (proc.running) { root.stop(); Qt.callLater(root.start) }
-        }
-        // cava may have given up while its device was gone: bring it back
-        if (root.active && !proc.running) { root.failures = 0; Qt.callLater(root.start) }
-      }
-    }
-  }
+  onSinkCountChanged: tapSoon.restart()
+  Timer { id: tapSoon; interval: 600; onTriggered: root.tapNow() }
+  Timer { interval: 2000; repeat: true; running: root.active; onTriggered: root.tapNow() }
 
   function stop() {
     retry.stop()
@@ -81,8 +61,7 @@ Item {
     levels = Model.zeros(bars)
   }
 
-  onActiveChanged: { if (active) { resolveTimer.restart(); start() } else stop() }
-  Component.onCompleted: resolveTimer.restart()
+  onActiveChanged: { if (active) { start(); tapSoon.restart() } else stop() }
   onBarsChanged: { stop(); if (active) Qt.callLater(start) }
 
   Process {
