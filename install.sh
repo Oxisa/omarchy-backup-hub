@@ -2,8 +2,10 @@
 # Sets up this repo's content on an Omarchy machine:
 #   1. installs missing packages the hub relies on
 #   2. makes Brave the default browser (web apps follow it, through the tunnel)
-#   3. symlinks plugins and theme-set hooks into ~/.config/omarchy
-#   4. enables this repo's own shell plugins
+#   3. symlinks plugins and theme-set hooks into ~/.config/omarchy, and
+#      helper commands into ~/.local/bin
+#   4. enables this repo's own shell plugins and adds the hub's Omarchy menu
+#      entries (Install → Web App with a route choice)
 #   5. removes unwanted default web apps and installs the ones listed below;
 #      "direct" ones launch in Chromium, which Happ lets bypass the tunnel
 #   6. runs the theme-set hooks once, so they apply without a theme change
@@ -17,6 +19,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 REPO_DIR="$(pwd)"
 APPS_DIR="$HOME/.local/share/applications"
 OMARCHY_APPS="/usr/share/omarchy/applications"
+MENU_FILE="$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
+MENU_START="// omarchy-backup-hub-menu-start"
+MENU_END="// omarchy-backup-hub-menu-end"
 
 # jq/curl: this script and the hooks; yt-dlp/ffmpeg/wl-clipboard: Omaloader;
 # brave-bin/chromium: the tunnel / direct browser split.
@@ -100,6 +105,38 @@ enable_plugins() {
   done
 }
 
+# Put the hub's menu entries (omarchy/menu/omarchy-menu.jsonc) into the user's
+# menu extension file between markers, leaving everything else in it alone.
+setup_menu() {
+  local block tmp
+  block="$MENU_START
+$(cat "$REPO_DIR/omarchy/menu/omarchy-menu.jsonc")
+$MENU_END"
+  mkdir -p "$(dirname "$MENU_FILE")"
+  [ -f "$MENU_FILE" ] || printf '{\n}\n' >"$MENU_FILE"
+  tmp=$(mktemp)
+  if grep -qF "$MENU_START" "$MENU_FILE"; then
+    awk -v start="$MENU_START" -v end="$MENU_END" -v block="$block" '
+      index($0, start) { print block; skip = 1; next }
+      index($0, end)   { skip = 0; next }
+      !skip' "$MENU_FILE" >"$tmp"
+  else
+    # Insert before the closing brace of the top-level object.
+    awk -v block="$block" '
+      { lines[NR] = $0 }
+      END {
+        last = NR; while (last > 0 && lines[last] !~ /^[[:space:]]*}[[:space:]]*$/) last--
+        for (i = 1; i <= NR; i++) { if (i == last) print block; print lines[i] }
+      }' "$MENU_FILE" >"$tmp"
+  fi
+  if cmp -s "$tmp" "$MENU_FILE"; then
+    rm -f "$tmp"; echo "menu entries up to date"
+  else
+    cat "$tmp" >"$MENU_FILE" && rm -f "$tmp" && echo "updated menu entries in $MENU_FILE"
+    omarchy menu refresh >/dev/null 2>&1 || true
+  fi
+}
+
 # Point a web app's launcher at the given route; idempotent.
 route_webapp() {
   local file="$APPS_DIR/$1.desktop" url="$2" route="$3" exec
@@ -129,9 +166,11 @@ setup_webapps() {
       # One of Omarchy's own web apps (X, YouTube): reuse its launcher and icon.
       cp "$OMARCHY_APPS/$name.desktop" "$APPS_DIR/" && echo "restored Omarchy web app $name"
     else
-      # Empty icon argument: omarchy fetches the site's own icon.
-      omarchy-webapp-install "$name" "$url" "" && echo "installed web app $name" \
-        || echo "could not install web app $name"
+      # Empty icon argument: omarchy fetches the site's own icon. If that
+      # fails it creates nothing, so fall back to a generic icon.
+      { omarchy-webapp-install "$name" "$url" "" \
+          || omarchy-webapp-install "$name" "$url" "applications-internet"; } \
+        && echo "installed web app $name" || echo "could not install web app $name"
     fi
     route_webapp "$name" "$url" "$route"
   done
@@ -142,7 +181,9 @@ install_packages
 set_default_browser
 link_dir_contents "$REPO_DIR/omarchy/plugins"    "$HOME/.config/omarchy/plugins"
 link_dir_contents "$REPO_DIR/omarchy/hooks/theme-set.d" "$HOME/.config/omarchy/hooks/theme-set.d"
+link_dir_contents "$REPO_DIR/omarchy/bin"        "$HOME/.local/bin"
 enable_plugins
+setup_menu
 setup_webapps
 omarchy-hook theme-set "$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)"
 

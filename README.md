@@ -13,8 +13,8 @@ git clone https://github.com/Oxisa/omarchy-backup-hub.git ~/.local/opt/omarchy-b
 
 1. Ставит недостающие пакеты: `jq`, `curl`, `yt-dlp`, `ffmpeg`, `wl-clipboard`, `brave-bin` и `chromium`. Если не установлен Happ, выводит подсказку.
 2. Делает Brave браузером по умолчанию, см. [Туннель и браузеры](#туннель-и-браузеры).
-3. Создаёт симлинки на содержимое `omarchy/plugins/` и `omarchy/hooks/theme-set.d/` в `~/.config/omarchy/`. Если на месте симлинка уже лежит обычный файл, он сохраняется как `*.pre-hub.bak`.
-4. Включает плагины из `omarchy/plugins/`.
+3. Создаёт симлинки на содержимое `omarchy/plugins/` и `omarchy/hooks/theme-set.d/` в `~/.config/omarchy/`, а на команды из `omarchy/bin/` — в `~/.local/bin/`. Если на месте симлинка уже лежит обычный файл, он сохраняется как `*.pre-hub.bak`.
+4. Включает плагины из `omarchy/plugins/` и добавляет пункты меню из `omarchy/menu/` в `~/.config/omarchy/extensions/omarchy-menu.jsonc`. Пункты вставляются между метками `omarchy-backup-hub-menu-start/end`, остальное в файле не трогается.
 5. Удаляет и устанавливает веб-приложения из раздела [Web-apps](#web-apps) и назначает каждому браузер по колонке «Маршрут». Списки продублированы в начале `install.sh`, при изменении правьте оба места.
 6. Один раз запускает хуки смены темы, чтобы они применились сразу.
 
@@ -26,6 +26,8 @@ git clone https://github.com/Oxisa/omarchy-backup-hub.git ~/.local/opt/omarchy-b
 |---|---|---|
 | `omarchy/plugins/` | Плагины omarchy-shell | `~/.config/omarchy/plugins/` |
 | `omarchy/hooks/theme-set.d/` | Хуки `omarchy theme set` | `~/.config/omarchy/hooks/theme-set.d/` |
+| `omarchy/bin/` | Команды хаба | `~/.local/bin/` |
+| `omarchy/menu/` | Пункты меню Omarchy | `~/.config/omarchy/extensions/omarchy-menu.jsonc` |
 | `apps/<программа>/` | Настройки отдельных программ | вручную, см. ниже |
 
 ## Web-apps
@@ -44,6 +46,8 @@ done
 ### Установить
 
 Устанавливаются через `omarchy-webapp-install`. Маршрут «туннель» — открывается в Brave через туннель, «напрямую» — в Chromium мимо туннеля.
+
+Новые веб-приложения удобно добавлять через меню Omarchy: **Install → Web App**. Хаб заменяет этот пункт командой `omarchy-webapp-install-routed`, которая перед именем и адресом спрашивает маршрут. Если иконку сайта скачать не удалось, она попросит указать иконку вручную.
 
 | Название | Адрес | Маршрут |
 |---|---|---|

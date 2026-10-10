@@ -1,0 +1,2 @@
+  // Install → Web App asks for the route: through the tunnel or direct.
+  "install.webapp": {"icon":"","label":"Web App","description":"Through the tunnel (Brave) or direct (Chromium)","action":"omarchy-launch-floating-terminal-with-presentation omarchy-webapp-install-routed"},
