@@ -9,8 +9,14 @@ git clone https://github.com/Oxisa/omarchy-backup-hub.git ~/.local/opt/omarchy-b
 ~/.local/opt/omarchy-backup-hub/install.sh
 ```
 
-`install.sh` создаёт симлинки на содержимое `omarchy/plugins/` и `omarchy/hooks/theme-set.d/` в `~/.config/omarchy/`.
-Если на месте симлинка уже лежит обычный файл, он сохраняется как `*.pre-hub.bak`. Скрипт можно запускать повторно.
+`install.sh` делает следующее:
+
+1. Создаёт симлинки на содержимое `omarchy/plugins/` и `omarchy/hooks/theme-set.d/` в `~/.config/omarchy/`. Если на месте симлинка уже лежит обычный файл, он сохраняется как `*.pre-hub.bak`.
+2. Включает плагины из `omarchy/plugins/`.
+3. Удаляет и устанавливает веб-приложения из раздела [Web-apps](#web-apps). Списки продублированы в начале `install.sh`, при изменении правьте оба места.
+4. Один раз запускает хуки смены темы, чтобы они применились сразу.
+
+Скрипт можно запускать повторно: уже включённые плагины и установленные веб-приложения он пропускает. Настройки Vesktop переносятся вручную, см. раздел [Vesktop](#vesktop).
 
 ## Структура
 
