@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "osia.dailyquote",
+  "name": "Daily Quote",
+  "version": "1.0.0",
+  "author": "osia",
+  "description": "A quote on the desktop background: English in blackletter with a Russian translation, from several quote sites with an offline set",
+  "kinds": ["service", "bar-widget"],
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Daily Quote",
+    "description": "Show/hide the quote and set its size, position and how often it changes",
+    "category": "Personalization",
+    "allowMultiple": false
+  }
+}

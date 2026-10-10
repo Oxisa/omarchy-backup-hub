@@ -169,7 +169,7 @@ BarWidget {
       anchors.centerIn: parent
       width: parent.width - Style.space(8)
       height: Math.round(Style.bar.iconFont * 1.05)
-      levels: cava.levels.slice(0, 28)
+      levels: cava && cava.levels ? cava.levels.slice(0, 28) : []
       style: root.barStyle
       mode: root.barMode
       palette: root.barPalette
