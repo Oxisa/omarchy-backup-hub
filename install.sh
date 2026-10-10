@@ -1,34 +1,58 @@
 #!/bin/bash
 # Sets up this repo's content on an Omarchy machine:
-#   1. symlinks plugins and theme-set hooks into ~/.config/omarchy
-#   2. enables this repo's own shell plugins
-#   3. removes unwanted default web apps and installs the ones listed below
-#   4. runs the theme-set hooks once, so they apply without a theme change
+#   1. installs missing packages the hub relies on
+#   2. makes Brave the default browser (web apps follow it, through the tunnel)
+#   3. symlinks plugins and theme-set hooks into ~/.config/omarchy
+#   4. enables this repo's own shell plugins
+#   5. removes unwanted default web apps and installs the ones listed below;
+#      "direct" ones launch in Chromium, which Happ lets bypass the tunnel
+#   6. runs the theme-set hooks once, so they apply without a theme change
 # Safe to re-run: existing non-symlink files are backed up once as *.pre-hub.bak,
-# enabled plugins and installed web apps are left alone.
-# Vesktop settings stay manual (see README): that file also holds sessions.
+# installed packages, enabled plugins and installed web apps are left alone.
+# Manual steps stay manual (see README): Happ itself and its per-app bypass,
+# and Vesktop settings, whose file also holds sessions.
 
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 REPO_DIR="$(pwd)"
 APPS_DIR="$HOME/.local/share/applications"
 
+# jq/curl: this script and the hooks; yt-dlp/ffmpeg/wl-clipboard: Omaloader;
+# brave-bin/chromium: the tunnel / direct browser split.
+PACKAGES=(jq curl yt-dlp ffmpeg wl-clipboard brave-bin chromium)
+
 # Keep in sync with the Web-apps section of README.md.
+# Install entries are "Name|URL|route": route "tunnel" opens in the default
+# browser (Brave, through the tunnel), "direct" opens in Chromium (bypasses it).
 WEBAPPS_REMOVE=(
   "Basecamp" "Discord" "Google Contacts" "Google Maps" "Google Messages"
   "Google Photos" "HEY" "WhatsApp" "Zoom"
 )
 WEBAPPS_INSTALL=(
-  "YouTube|https://youtube.com"
-  "YouTube Music|https://music.youtube.com"
-  "Reddit|https://reddit.com"
-  "Gmail|https://mail.google.com"
-  "Google Drive|https://drive.google.com"
-  "Yandex Диск|https://disk.yandex.ru"
-  "Яндекс Телемост|https://telemost.yandex.ru"
-  "Telegram|https://web.telegram.org"
-  "Zona|https://w1.zona.im"
+  "YouTube|https://youtube.com|tunnel"
+  "YouTube Music|https://music.youtube.com|tunnel"
+  "Reddit|https://reddit.com|tunnel"
+  "Gmail|https://mail.google.com|tunnel"
+  "Google Drive|https://drive.google.com|tunnel"
+  "Telegram|https://web.telegram.org|tunnel"
+  "Yandex Диск|https://disk.yandex.ru|direct"
+  "Яндекс Телемост|https://telemost.yandex.ru|direct"
+  "Zona|https://w1.zona.im|direct"
 )
+
+install_packages() {
+  omarchy pkg add "${PACKAGES[@]}"
+  command -v happd >/dev/null || command -v /opt/happ/bin/happd >/dev/null \
+    || echo "Happ is not installed: get it from https://happ.su (see README)"
+}
+
+set_default_browser() {
+  if [ "$(omarchy-default-browser)" = "brave" ]; then
+    echo "Brave already the default browser"
+  else
+    omarchy-default-browser brave
+  fi
+}
 
 link() {
   local src="$1" dst="$2"
@@ -62,14 +86,29 @@ enable_plugins() {
   done
 }
 
+# Point a web app's launcher at the given route; idempotent.
+route_webapp() {
+  local file="$APPS_DIR/$1.desktop" url="$2" route="$3" exec
+  [ -f "$file" ] || return 0
+  if [ "$route" = "direct" ]; then
+    exec="uwsm-app -- chromium --app=$url"
+  else
+    exec="omarchy-launch-webapp \"$url\""
+  fi
+  grep -qxF "Exec=$exec" "$file" && return 0
+  sed -i "s|^Exec=.*|Exec=$exec|" "$file"
+  echo "web app $1 -> $route"
+}
+
 setup_webapps() {
-  local app name url
+  local app name url route rest
   for name in "${WEBAPPS_REMOVE[@]}"; do
     [ -f "$APPS_DIR/$name.desktop" ] || continue
     OMARCHY_REMOVE_NOTIFY=false omarchy-webapp-remove "$name" && echo "removed web app $name"
   done
   for app in "${WEBAPPS_INSTALL[@]}"; do
-    name="${app%%|*}" url="${app#*|}"
+    name="${app%%|*}" rest="${app#*|}"
+    url="${rest%%|*}" route="${rest#*|}"
     if [ -f "$APPS_DIR/$name.desktop" ]; then
       echo "web app $name already installed"
     else
@@ -77,9 +116,13 @@ setup_webapps() {
       omarchy-webapp-install "$name" "$url" "" && echo "installed web app $name" \
         || echo "could not install web app $name"
     fi
+    route_webapp "$name" "$url" "$route"
   done
+  update-desktop-database "$APPS_DIR" &>/dev/null || true
 }
 
+install_packages
+set_default_browser
 link_dir_contents "$REPO_DIR/omarchy/plugins"    "$HOME/.config/omarchy/plugins"
 link_dir_contents "$REPO_DIR/omarchy/hooks/theme-set.d" "$HOME/.config/omarchy/hooks/theme-set.d"
 enable_plugins
