@@ -15,3 +15,10 @@ SettingsPage 1.0 SettingsPage.qml
 SoundPage 1.0 SoundPage.qml
 Spectrum 1.0 Spectrum.qml
 Vinyl 1.0 Vinyl.qml
+singleton HubStyle 1.0 HubStyle.qml
+HubCard 1.0 HubCard.qml
+HubCaption 1.0 HubCaption.qml
+HubChip 1.0 HubChip.qml
+HubSelect 1.0 HubSelect.qml
+HubSwitch 1.0 HubSwitch.qml
+HubRow 1.0 HubRow.qml

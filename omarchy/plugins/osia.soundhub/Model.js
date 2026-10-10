@@ -160,3 +160,23 @@ function autoPreamp(bands) {
   for (var i = 0; i < bands.length; i++) mx = Math.max(mx, Number(bands[i]) || 0)
   return -Math.round(mx * 10) / 10
 }
+
+// A stable pseudo-waveform for a track: `count` heights in 0.18..1, seeded by
+// the track id so every song keeps its own shape. Smoothed noise with a soft
+// swell, so it reads like audio rather than static.
+function waveShape(seed, count) {
+  var h = 2166136261
+  var str = String(seed || "")
+  for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0 }
+  function rnd() { h ^= h << 13; h >>>= 0; h ^= h >>> 17; h ^= h << 5; h >>>= 0; return h / 4294967296 }
+  var raw = []
+  for (var j = 0; j < count; j++) raw.push(rnd())
+  var out = []
+  for (var k = 0; k < count; k++) {
+    var a = raw[Math.max(0, k - 1)], b = raw[k], c = raw[Math.min(count - 1, k + 1)]
+    var v = (a + b * 2 + c) / 4
+    var swell = 0.65 + 0.35 * Math.sin(k / count * Math.PI * (2 + (raw[0] * 3)) + raw[1] * 6)
+    out.push(Math.max(0.18, Math.min(1, v * swell * 1.5)))
+  }
+  return out
+}

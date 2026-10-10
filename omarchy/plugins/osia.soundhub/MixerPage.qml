@@ -27,7 +27,7 @@ Item {
   readonly property color urgent: host ? host.urgent : "red"
   readonly property color bg: Color.background
   readonly property string ff: host ? host.ff : ""
-  readonly property real radius: Math.max(6, Math.min(Style.cornerRadius, 12))
+  readonly property real radius: HubStyle.radius
   function t(k, a) { return host ? host.t(k, a) : k }
   function fill(c, a) { return Qt.tint(Color.background, Qt.rgba(c.r, c.g, c.b, a)) }
 
@@ -311,9 +311,10 @@ Item {
     height: Style.space(32)
     Text {
       anchors.verticalCenter: parent.verticalCenter
-      text: hdr.text
-      color: Qt.darker(hdr.fg, 1.4)
-      font.family: hdr.ff; font.pixelSize: Style.font.caption; font.bold: true
+      x: Style.space(4)
+      text: hdr.text.toUpperCase()
+      color: Qt.darker(hdr.fg, 1.55)
+      font.family: hdr.ff; font.pixelSize: Style.font.caption - 1; font.bold: true
       font.letterSpacing: 1.3
     }
   }
@@ -326,13 +327,11 @@ Item {
     property bool on: false
     property string ff: ""
     signal clicked()
-    height: chipText.implicitHeight + Style.space(6)
-    width: chipText.implicitWidth + Style.space(14)
+    height: chipText.implicitHeight + Style.space(8)
+    width: chipText.implicitWidth + Style.space(16)
     radius: height / 2
-    color: on ? tint : "transparent"
-    border.width: 1
-    border.color: tint
-    opacity: chipMouse.containsMouse && !on ? 0.8 : 1
+    color: on ? tint : HubStyle.tint(tint, chipMouse.containsMouse ? 0.24 : 0.14)
+    Behavior on color { ColorAnimation { duration: HubStyle.anim } }
     Text {
       id: chipText
       anchors.centerIn: parent
@@ -424,9 +423,7 @@ Item {
     height: Style.space(24)
     width: adding ? Style.space(160) : afLbl.implicitWidth + Style.space(18)
     radius: height / 2
-    color: "transparent"
-    border.width: 1
-    border.color: owner ? owner.accent : "white"
+    color: owner ? HubStyle.tint(owner.accent, 0.14) : "transparent"
     Text {
       id: afLbl
       visible: !af.adding
@@ -463,9 +460,7 @@ Item {
     x: 0; y: 0
     width: page.width; height: page.barH - Style.space(8)
     radius: page.radius
-    color: page.fill(page.fg, 0.04)
-    border.width: 1
-    border.color: Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.07)
+    color: page.fill(page.fg, HubStyle.surface)
 
     Row {
       anchors.left: parent.left; anchors.leftMargin: Style.space(10)
@@ -543,9 +538,7 @@ Item {
         height: Style.space(26)
         width: npText.implicitWidth + Style.space(20)
         radius: height / 2
-        color: "transparent"
-        border.width: 1
-        border.color: page.accent
+        color: HubStyle.tint(page.accent, 0.14)
         Text {
           id: npText
           anchors.centerIn: parent
@@ -608,9 +601,9 @@ Item {
           width: srcCol.width
           height: scCol.implicitHeight + Style.space(16)
           radius: page.radius
-          color: isDefaultMic ? page.fill(page.accent, 0.07) : page.fill(page.fg, 0.045)
-          border.width: 1
-          border.color: isDefaultMic ? Qt.rgba(page.accent.r, page.accent.g, page.accent.b, 0.35) : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.07)
+          color: isDefaultMic ? page.fill(page.accent, 0.12) : page.fill(page.fg, HubStyle.surface)
+          border.width: isDefaultMic ? 1 : 0
+          border.color: HubStyle.tint(page.accent, 0.45)
           opacity: modelData.live ? 1 : 0.5
 
           Column {
@@ -817,9 +810,7 @@ Item {
         width: parent.width
         height: Style.space(150)
         radius: page.radius
-        color: page.fill(page.fg, 0.02)
-        border.width: 1
-        border.color: Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.12)
+        color: page.fill(page.fg, 0.03)
         Text {
           anchors.centerIn: parent
           width: parent.width - Style.space(24)
@@ -842,9 +833,8 @@ Item {
           width: mixCol.width
           height: mcCol.implicitHeight + Style.space(18)
           radius: page.radius
-          color: page.fill(tint, 0.08)
-          border.width: 1
-          border.color: Qt.rgba(tint.r, tint.g, tint.b, 0.45)
+          color: page.fill(tint, 0.09)
+          border.width: 0
 
           Rectangle {
             width: Style.space(4); height: parent.height - Style.space(16)
@@ -923,9 +913,10 @@ Item {
             }
 
             // where it goes
-            Dropdown {
+            HubSelect {
               width: parent.width
               showLabel: false
+              background: page.bg
               options: [{ value: "", label: "\u{f1720}  " + page.t("mx.virtual") }]
                 .concat(page.eqOn ? [{ value: "soundhub_eq", label: "\u{f0ea2}  " + page.t("mx.viaEq", page.outLabel(page.eq.target)) }] : [])
                 .concat(page.devices.map(function(o) {
@@ -1094,10 +1085,10 @@ Item {
           width: outCol.width
           height: ocCol.implicitHeight + Style.space(16)
           radius: page.radius
-          color: active ? page.fill(page.accent, 0.10) : page.fill(page.fg, 0.045)
+          color: active ? page.fill(page.accent, 0.12) : page.fill(page.fg, HubStyle.surface)
           opacity: online ? 1 : 0.5
-          border.width: active ? 2 : 1
-          border.color: active ? page.accent : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.07)
+          border.width: active ? 1 : 0
+          border.color: HubStyle.tint(page.accent, 0.55)
 
           MouseArea {                                    // click the card = play sound here
             anchors.fill: parent

@@ -43,6 +43,15 @@ Panel {
     }
   }
   property bool wide: false               // Now Playing with lyrics: two columns
+  // each tab gets the width it needs (the panel resizes while the page is faded out)
+  function pageWidth(i) {
+    switch (i) {
+      case 0: return wide ? 840 : 400      // now playing (+ lyrics)
+      case 1: return 920                   // mixer: three columns
+      case 2: return 500                   // equalizer
+      default: return 440                  // focus, settings
+    }
+  }
 
   function opt(key, fallback) {
     return settings && settings[key] !== undefined && settings[key] !== null ? settings[key] : fallback
@@ -127,13 +136,13 @@ Panel {
     owner: root.barIdentity
     bar: root.bar
     open: root.opened
-    contentWidth: panel.fittedContentWidth(Style.space((root.wide && root.shownTab === 0) || root.shownTab === 1 ? 920 : 520))
+    contentWidth: panel.fittedContentWidth(Style.space(root.pageWidth(root.shownTab)))
     contentHeight: panel.fittedContentHeight(contentCol.implicitHeight)
 
     Column {
       id: contentCol
       width: parent.width
-      spacing: Style.spacing.md
+      spacing: Style.space(12)
 
       // ---- tabs: a segmented control with a sliding highlight ----
       // When the labels don't all fit, inactive tabs shrink to their icon
@@ -141,11 +150,9 @@ Panel {
       Rectangle {
         id: strip
         width: parent.width
-        height: Style.spacing.controlHeight + Style.space(6)
+        height: HubStyle.controlH + Style.space(8)
         radius: height / 2
-        color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.05)
-        border.width: 1
-        border.color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.07)
+        color: HubStyle.tint(root.fg, HubStyle.surface)
 
         readonly property real pad: Style.space(3)
         readonly property real iconW: Style.space(40)

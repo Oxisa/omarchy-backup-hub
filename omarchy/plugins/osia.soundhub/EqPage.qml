@@ -15,11 +15,12 @@ import "Model.js" as Model
 Column {
   id: page
   property var host: null
-  spacing: Style.spacing.md
+  spacing: HubStyle.gap
 
   readonly property color fg: host ? host.fg : "white"
   readonly property color accent: host ? host.accent : "white"
   readonly property string ff: host ? host.ff : ""
+  readonly property color bgc: host ? host.bgc : "black"
   // scope: "global" (the system EQ) or a mix id (that mix's own EQ modifier)
   readonly property string scope: host && host.eqScope ? host.eqScope : "global"
   readonly property bool isGlobal: scope === "global"
@@ -107,12 +108,7 @@ Column {
 
   readonly property real shownPreamp: eq.autoPreamp !== false ? Model.autoPreamp(bands) : (eq.preamp || 0)
 
-  component Card: Rectangle {
-    radius: Math.max(6, Math.min(Style.cornerRadius, 12))
-    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
-    border.width: 1
-    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
-  }
+  component Card: HubCard { fg: page.fg; accent: page.accent }
 
   // ======== which EQ: the global one or a mix's own ========
   Flow {
@@ -121,23 +117,13 @@ Column {
     spacing: Style.space(6)
     Repeater {
       model: [{ id: "global", name: page.t("eq.global") }].concat(page.mixes.map(function(m) { return { id: m.id, name: m.name, on: m.eq && m.eq.enabled } }))
-      delegate: Rectangle {
-        id: sc
+      delegate: HubChip {
         required property var modelData
-        readonly property bool current: page.scope === modelData.id
-        height: scText.implicitHeight + Style.space(8)
-        width: scText.implicitWidth + Style.space(20)
-        radius: height / 2
-        color: current ? page.accent : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, scMouse.containsMouse ? 0.10 : 0.05)
-        Text {
-          id: scText
-          anchors.centerIn: parent
-          text: (sc.modelData.id === "global" ? "\u{f0ea2}  " : "\u{f1542}  ") + sc.modelData.name
-                + (sc.modelData.id !== "global" && sc.modelData.on ? "  ●" : "")
-          color: sc.current ? Color.background : page.fg
-          font.family: page.ff; font.pixelSize: Style.font.caption; font.bold: sc.current
-        }
-        MouseArea { id: scMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: host.eqScope = sc.modelData.id }
+        icon: modelData.id === "global" ? "\u{f0ea2}" : "\u{f1542}"
+        label: modelData.name + (modelData.id !== "global" && modelData.on ? "  ●" : "")
+        on: page.scope === modelData.id
+        fg: page.fg; accent: page.accent; ink: page.bgc; fontFamily: page.ff
+        onClicked: host.eqScope = modelData.id
       }
     }
   }
@@ -145,19 +131,19 @@ Column {
   // ======== header card ========
   Card {
     width: parent.width
-    height: headerRow.implicitHeight + Style.spacing.md * 2
+    height: headerRow.implicitHeight + HubStyle.pad * 2
 
     Row {
       id: headerRow
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
-      anchors.margins: Style.spacing.md
-      spacing: Style.spacing.md
+      anchors.margins: HubStyle.pad
+      spacing: HubStyle.pad
 
       // power button; a slow ring breathes while the EQ is on
       Item {
-        width: Style.space(56); height: width
+        width: Style.space(48); height: width
         anchors.verticalCenter: parent.verticalCenter
         Rectangle {
           anchors.centerIn: parent
@@ -184,7 +170,7 @@ Column {
             anchors.centerIn: parent
             text: "\u{f0425}"                       // md-power
             color: page.eqOn ? (host ? host.bgc : "black") : page.fg
-            font.family: page.ff; font.pixelSize: Style.space(24)
+            font.family: page.ff; font.pixelSize: Style.space(21)
           }
           MouseArea {
             anchors.fill: parent
@@ -200,7 +186,7 @@ Column {
 
       Column {
         anchors.verticalCenter: parent.verticalCenter
-        width: parent.width - Style.space(56) - resetBtn.width - parent.spacing * 2
+        width: parent.width - Style.space(48) - resetBtn.width - parent.spacing * 2
         spacing: Style.space(6)
         Text {
           width: parent.width
@@ -238,12 +224,13 @@ Column {
         }
       }
 
-      PanelActionButton {
+      HubChip {
         id: resetBtn
         anchors.verticalCenter: parent.verticalCenter
-        iconText: "󰑓"
-        tooltipText: page.t("eq.reset")
-        foreground: page.fg; hoverColor: page.accent; fontFamily: page.ff
+        iconOnly: true
+        icon: "󰑓"
+        label: page.t("eq.reset")
+        fg: page.fg; accent: page.accent; fontFamily: page.ff
         onClicked: page.applyPreset("flat")
       }
     }
@@ -276,11 +263,9 @@ Column {
   Rectangle {
     visible: page.isGlobal && page.eqOn && page.bypass.length > 0
     width: parent.width
-    height: bypassRow.implicitHeight + Style.spacing.sm * 2
-    radius: page.radius
-    color: Qt.tint(Color.background, Qt.rgba(page.urgent.r, page.urgent.g, page.urgent.b, 0.12))
-    border.width: 1
-    border.color: Qt.rgba(page.urgent.r, page.urgent.g, page.urgent.b, 0.5)
+    height: bypassRow.implicitHeight + Style.space(20)
+    radius: HubStyle.radius
+    color: HubStyle.tint(page.urgent, 0.13)
     Row {
       id: bypassRow
       anchors.verticalCenter: parent.verticalCenter
@@ -295,29 +280,17 @@ Column {
         color: page.fg
         font.family: page.ff; font.pixelSize: Style.font.caption
       }
-      Rectangle {
+      HubChip {
         id: fixBtn
         anchors.verticalCenter: parent.verticalCenter
-        width: fixText.implicitWidth + Style.space(18)
-        height: fixText.implicitHeight + Style.space(8)
-        radius: height / 2
-        color: page.accent
-        Text {
-          id: fixText
-          anchors.centerIn: parent
-          text: page.t("eq.bypassFix")
-          color: Color.background
-          font.family: page.ff; font.pixelSize: Style.font.caption; font.bold: true
-        }
-        MouseArea {
-          anchors.fill: parent
-          cursorShape: Qt.PointingHandCursor
-          onClicked: {
-            var cmds = page.bypass.map(function(m) { return [page.mixBin, "mix-set", m.id, "output=soundhub_eq"] })
-            for (var i = 0; i < cmds.length; i++) Quickshell.execDetached(cmds[i])
-            page.bypass = []
-            fixCheck.restart()
-          }
+        label: page.t("eq.bypassFix")
+        on: true
+        fg: page.fg; accent: page.accent; ink: page.bgc; fontFamily: page.ff
+        onClicked: {
+          var cmds = page.bypass.map(function(m) { return [page.mixBin, "mix-set", m.id, "output=soundhub_eq"] })
+          for (var i = 0; i < cmds.length; i++) Quickshell.execDetached(cmds[i])
+          page.bypass = []
+          fixCheck.restart()
         }
       }
     }
@@ -327,14 +300,14 @@ Column {
   // ======== curve card ========
   Card {
     width: parent.width
-    height: board.height + preampRow.height + Style.spacing.md * 3
+    height: board.height + preampRow.height + HubStyle.pad * 2 + Style.space(10)
 
     Item {
       id: board
-      x: Style.spacing.md
-      y: Style.spacing.md
-      width: parent.width - Style.spacing.md * 2
-      height: Style.space(220)
+      x: HubStyle.pad
+      y: HubStyle.pad
+      width: parent.width - HubStyle.pad * 2
+      height: Style.space(196)
       opacity: page.eqOn ? 1 : 0.5
       Behavior on opacity { NumberAnimation { duration: 200 } }
 
@@ -472,10 +445,10 @@ Column {
     // preamp, at the foot of the curve card
     Row {
       id: preampRow
-      x: Style.spacing.md
-      y: board.y + board.height + Style.spacing.md
-      width: parent.width - Style.spacing.md * 2
-      height: Style.spacing.controlHeight
+      x: HubStyle.pad
+      y: board.y + board.height + Style.space(10)
+      width: parent.width - HubStyle.pad * 2
+      height: HubStyle.controlH
       spacing: Style.spacing.sm
       Text {
         anchors.verticalCenter: parent.verticalCenter
@@ -499,90 +472,43 @@ Column {
           if (page.isGlobal) host.eqRun(["set", "--preamp", val]); else page.mixCmd(["mix-eq", page.scope, "preamp=" + val])
         }
       }
-      Rectangle {                                     // Auto chip
+      HubChip {                                       // Auto chip
         id: autoChip
-        readonly property bool on: page.eq.autoPreamp !== false
         anchors.verticalCenter: parent.verticalCenter
-        width: autoText.implicitWidth + Style.space(18)
-        height: autoText.implicitHeight + Style.space(8)
-        radius: height / 2
-        color: on ? page.accent : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.08)
-        Text {
-          id: autoText
-          anchors.centerIn: parent
-          text: page.t("eq.auto")
-          color: autoChip.on ? (host ? host.bgc : "black") : page.fg
-          font.family: page.ff; font.pixelSize: Style.font.caption; font.bold: autoChip.on
-        }
-        MouseArea {
-          anchors.fill: parent
-          cursorShape: Qt.PointingHandCursor
-          onClicked: {
-            var val = autoChip.on ? String(page.shownPreamp) : "auto"
-            if (page.isGlobal) host.eqRun(["set", "--preamp", val]); else page.mixCmd(["mix-eq", page.scope, "preamp=" + val])
-          }
+        label: page.t("eq.auto")
+        on: page.eq.autoPreamp !== false
+        fg: page.fg; accent: page.accent; ink: page.bgc; fontFamily: page.ff
+        onClicked: {
+          var val = on ? String(page.shownPreamp) : "auto"
+          if (page.isGlobal) host.eqRun(["set", "--preamp", val]); else page.mixCmd(["mix-eq", page.scope, "preamp=" + val])
         }
       }
     }
   }
 
-  // ======== presets ========
-  Grid {
-    id: presetGrid
+  // ======== presets: chips in a card ========
+  Column {
     width: parent.width
-    columns: 5
-    spacing: Style.space(8)
-    readonly property real tileW: (width - spacing * (columns - 1)) / columns
-
-    Repeater {
-      model: page.presetOrder
-      delegate: Rectangle {
-        id: tile
-        required property string modelData
-        readonly property bool current: page.preset === modelData
-        width: presetGrid.tileW
-        height: Style.space(76)
-        radius: page.radius
-        color: current ? Qt.rgba(page.accent.r, page.accent.g, page.accent.b, 0.12)
-             : tileMouse.containsMouse ? Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.07)
-             : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.035)
-        border.width: 1
-        border.color: current ? Qt.rgba(page.accent.r, page.accent.g, page.accent.b, 0.55)
-                              : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.05)
-        Behavior on color { ColorAnimation { duration: 160 } }
-
-        Column {
-          anchors.centerIn: parent
-          spacing: Style.space(6)
-          Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: Style.space(34); height: width; radius: width / 2
-            color: tile.current ? page.accent : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.08)
-            Behavior on color { ColorAnimation { duration: 180 } }
-            Text {
-              anchors.centerIn: parent
-              text: page.presetIcons[tile.modelData] || "󰺢"
-              color: tile.current ? (host ? host.bgc : "black") : page.fg
-              font.family: page.ff; font.pixelSize: Style.space(16)
-            }
+    spacing: Style.space(6)
+    HubCaption { text: page.t("eq.presets"); icon: "󰺢"; fg: page.fg; fontFamily: page.ff }
+    Card {
+      width: parent.width
+      height: presetFlow.implicitHeight + HubStyle.pad * 2
+      Flow {
+        id: presetFlow
+        x: HubStyle.pad; y: HubStyle.pad
+        width: parent.width - HubStyle.pad * 2
+        spacing: Style.space(6)
+        Repeater {
+          model: page.presetOrder
+          delegate: HubChip {
+            required property string modelData
+            icon: page.presetIcons[modelData] || "󰺢"
+            label: page.t("preset." + modelData)
+            on: page.preset === modelData
+            fg: page.fg; accent: page.accent; ink: page.bgc; fontFamily: page.ff
+            onClicked: page.applyPreset(modelData)
           }
-          Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: tile.width - Style.space(8)
-            horizontalAlignment: Text.AlignHCenter
-            text: page.t("preset." + tile.modelData)
-            color: tile.current ? page.fg : Qt.darker(page.fg, 1.25)
-            font.family: page.ff; font.pixelSize: Style.font.caption
-            font.bold: tile.current
-            elide: Text.ElideRight
-          }
-        }
-        MouseArea {
-          id: tileMouse
-          anchors.fill: parent
-          hoverEnabled: true
-          cursorShape: Qt.PointingHandCursor
-          onClicked: page.applyPreset(tile.modelData)
         }
       }
     }

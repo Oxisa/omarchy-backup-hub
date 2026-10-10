@@ -106,10 +106,8 @@ Item {
   Rectangle {
     id: card
     anchors.fill: parent
-    radius: Math.max(6, Math.min(Style.cornerRadius, 12))
-    color: Qt.rgba(col.fg.r, col.fg.g, col.fg.b, 0.035)
-    border.width: 1
-    border.color: Qt.rgba(col.fg.r, col.fg.g, col.fg.b, 0.06)
+    radius: HubStyle.radius
+    color: HubStyle.tint(col.fg, HubStyle.surface)
   }
 
   Row {

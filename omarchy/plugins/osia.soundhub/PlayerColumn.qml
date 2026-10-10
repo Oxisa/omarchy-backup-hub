@@ -1,18 +1,18 @@
 import QtQuick
 import Quickshell.Services.Mpris
+import Quickshell.Widgets
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 
-// Now playing: album sleeve + spinning record, track info, seek, transport,
-// player volume, live spectrum and the source picker. Player selection and
+// Now playing: art (spinning record or square cover), track info, a
+// pseudo-waveform seek bar and transport. Player selection and
 // actions go through Omarchy's own media service, so SoundHub always agrees
 // with the bar and the media keys about which player is "the" player.
 Column {
   id: page
   property var host: null
-  property bool showSpectrum: true          // false when the spectrum sits under the lyrics
-  property bool stacked: false              // two-column page: art centred, info below it
+  property string look: "vinyl"             // "vinyl": record + sleeve, "cover": square art
   spacing: Style.spacing.md
 
   readonly property var media: host ? host.media : null
@@ -23,6 +23,7 @@ Column {
   readonly property color fg: host ? host.fg : "white"
   readonly property color accent: host ? host.accent : "white"
   readonly property string ff: host ? host.ff : ""
+  readonly property string artUrl: player ? (player.trackArtUrl || "") : ""
 
   // Browser players (YouTube Music in Brave/Chromium) briefly report length 0
   // or CanSeek=false right after a seek. Remember, per track, the last real
@@ -114,13 +115,13 @@ Column {
     }
   }
 
-  // ---- record + info ----
+  // ---- art: spinning record (look "vinyl") or a square cover (look "cover") ----
   Item {
-    visible: page.hasTrack
+    visible: page.hasTrack && page.look === "vinyl"
     width: parent.width
     height: Style.space(196)
 
-    // stacked: centre the sleeve + record group in the column
+    // centre the sleeve + record group in the column
     readonly property real artWidth: sleeve.width * 0.55 + vinyl.implicitWidth
 
     // sleeve: the album cover the record slides out of
@@ -128,7 +129,7 @@ Column {
       id: sleeve
       width: Style.space(176)
       height: width
-      x: page.stacked ? Math.max(0, (parent.width - parent.artWidth) / 2) : 0
+      x: Math.max(0, (parent.width - parent.artWidth) / 2)
       anchors.verticalCenter: parent.verticalCenter
       radius: Math.min(Style.cornerRadius, 6)
       color: Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.08)
@@ -136,14 +137,14 @@ Column {
       z: 2
       Image {
         anchors.fill: parent
-        source: page.player ? (page.player.trackArtUrl || "") : ""
+        source: page.artUrl
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         sourceSize: Qt.size(width * 2, height * 2)
       }
       Text {
         anchors.centerIn: parent
-        visible: !page.player || !page.player.trackArtUrl
+        visible: page.artUrl === ""
         text: "󰝚"
         color: Qt.darker(page.fg, 1.6)
         font.family: page.ff; font.pixelSize: Style.space(48)
@@ -158,54 +159,46 @@ Column {
       x: sleeve.x + (page.playing ? sleeve.width * 0.55 : sleeve.width * 0.18)
       Behavior on x { NumberAnimation { duration: 650; easing.type: Easing.OutCubic } }
       z: 1
-      artUrl: page.player ? (page.player.trackArtUrl || "") : ""
+      artUrl: page.artUrl
       playing: page.playing
       progress: page.progress
       pressing: host ? String(host.opt("pressing", "theme")) : "theme"
       accent: page.accent; fg: page.fg; bg: host ? host.bgc : "black"
     }
+  }
 
-    Column {
-      visible: !page.stacked
-      anchors.left: vinyl.right
-      anchors.leftMargin: Style.spacing.md
-      anchors.right: parent.right
-      anchors.verticalCenter: parent.verticalCenter
-      spacing: Style.space(4)
-
-      Text {
-        width: parent.width
-        text: page.player ? (page.player.trackTitle || "") : ""
-        color: page.fg
-        font.family: page.ff; font.pixelSize: Style.font.title; font.bold: true
-        wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-      }
-      Text {
-        width: parent.width
-        text: page.player ? (page.player.trackArtist || (host ? host.t("np.unknownArtist") : "")) : ""
-        color: page.accent
-        font.family: page.ff; font.pixelSize: Style.font.body
-        elide: Text.ElideRight
-      }
-      Text {
-        width: parent.width
-        visible: text !== ""
-        text: page.player ? (page.player.trackAlbum || "") : ""
-        color: Qt.darker(page.fg, 1.5)
-        font.family: page.ff; font.pixelSize: Style.font.caption
-        elide: Text.ElideRight
-      }
+  ClippingRectangle {
+    visible: page.hasTrack && page.look === "cover"
+    anchors.horizontalCenter: parent.horizontalCenter
+    width: Math.min(parent.width - Style.space(40), Style.space(300))
+    height: width
+    radius: Math.max(6, Math.min(Style.cornerRadius, 12))
+    color: Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.08)
+    Image {
+      anchors.fill: parent
+      source: page.artUrl
+      fillMode: Image.PreserveAspectCrop
+      asynchronous: true
+      sourceSize: Qt.size(width * 2, height * 2)
+      opacity: status === Image.Ready ? 1 : 0
+      Behavior on opacity { NumberAnimation { duration: 250 } }
+    }
+    Text {
+      anchors.centerIn: parent
+      visible: page.artUrl === ""
+      text: "󰝚"
+      color: Qt.darker(page.fg, 1.6)
+      font.family: page.ff; font.pixelSize: Style.space(64)
     }
   }
 
-  // ---- stacked: track info centred under the art ----
+  // ---- track info ----
   Column {
-    visible: page.hasTrack && page.stacked
+    visible: page.hasTrack
     width: parent.width
     spacing: Style.space(3)
     Text {
       width: parent.width
-      horizontalAlignment: Text.AlignHCenter
       text: page.player ? (page.player.trackTitle || "") : ""
       color: page.fg
       font.family: page.ff; font.pixelSize: Style.font.title + 2; font.bold: true
@@ -213,50 +206,61 @@ Column {
     }
     Text {
       width: parent.width
-      horizontalAlignment: Text.AlignHCenter
       text: (page.player ? (page.player.trackArtist || (host ? host.t("np.unknownArtist") : "")) : "")
             + (page.player && page.player.trackAlbum ? "  ·  " + page.player.trackAlbum : "")
-      color: page.accent
+      color: Qt.darker(page.fg, 1.3)
       font.family: page.ff; font.pixelSize: Style.font.body
+      elide: Text.ElideRight
+    }
+    Text {
+      width: parent.width
+      visible: text !== ""
+      text: page.media && page.player ? (host ? host.t("np.via", page.media.labelFor(page.player)) : "") : ""
+      color: Qt.darker(page.fg, 1.8)
+      font.family: page.ff; font.pixelSize: Style.font.caption
       elide: Text.ElideRight
     }
   }
 
-  // ---- seek ----
+  // ---- seek: a per-track pseudo-waveform, played part filled ----
   Item {
     visible: page.hasTrack
     width: parent.width
-    height: Style.space(28)
+    height: Style.space(56)
 
-    Rectangle {
+    Item {
       id: track
       anchors.left: parent.left; anchors.right: parent.right
-      anchors.top: parent.top; anchors.topMargin: Style.space(4)
-      height: Style.space(4)
-      radius: height / 2
-      color: Qt.rgba(page.fg.r, page.fg.g, page.fg.b, page.canSeek ? 0.18 : 0.08)
-      Rectangle {
-        width: parent.width * page.progress
-        height: parent.height
-        radius: height / 2
-        color: page.accent
-      }
-      Rectangle {
-        visible: page.canSeek && (seekMouse.containsMouse || page.seeking)
-        width: Style.space(12); height: width; radius: width / 2
-        x: parent.width * page.progress - width / 2
-        anchors.verticalCenter: parent.verticalCenter
-        color: page.accent
+      anchors.top: parent.top
+      height: Style.space(34)
+
+      readonly property real barW: Style.space(3)
+      readonly property real gap: Style.space(2)
+      readonly property int count: Math.max(8, Math.floor((width + gap) / (barW + gap)))
+      readonly property var shape: Model.waveShape(page.trackId, count)
+
+      Repeater {
+        model: track.count
+        delegate: Rectangle {
+          required property int index
+          readonly property real h: track.shape[index] || 0.3
+          x: index * (track.barW + track.gap)
+          width: track.barW
+          height: Math.max(track.barW, track.height * h)
+          anchors.verticalCenter: parent.verticalCenter
+          radius: width / 2
+          color: (index + 0.5) / track.count <= page.progress ? page.accent
+               : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, page.canSeek ? 0.22 : 0.12)
+        }
       }
     }
     MouseArea {
       id: seekMouse
       anchors.fill: track
-      anchors.margins: -Style.space(8)
       enabled: page.canSeek
       hoverEnabled: true
       cursorShape: page.canSeek ? Qt.PointingHandCursor : Qt.ArrowCursor
-      function ratioAt(x) { return Math.max(0, Math.min(1, (x - Style.space(8)) / track.width)) }
+      function ratioAt(x) { return Math.max(0, Math.min(1, x / track.width)) }
       onPressed: function(e) { page.seeking = true; page.seekRatio = ratioAt(e.x) }
       onPositionChanged: function(e) { if (page.seeking) page.seekRatio = ratioAt(e.x) }
       onReleased: {
@@ -278,18 +282,17 @@ Column {
     }
   }
 
-  // ---- transport ----
-  Item {
+  // ---- transport: spread across the column ----
+  Row {
     visible: page.hasTrack
     width: parent.width
-    height: Style.space(44)
+    height: Style.space(48)
+    readonly property real slot: width / 5
 
-    Row {
-      anchors.centerIn: parent
-      spacing: Style.space(14)
-
+    Item {
+      width: parent.slot; height: parent.height
       PanelActionButton {
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.centerIn: parent
         iconText: "󰒝"
         tooltipText: host ? host.t("np.shuffle") : ""
         enabled: page.player !== null && !!page.player.shuffleSupported
@@ -299,37 +302,54 @@ Column {
         fontFamily: page.ff
         onClicked: page.player.shuffle = !page.player.shuffle
       }
+    }
+    Item {
+      width: parent.slot; height: parent.height
       PanelActionButton {
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.centerIn: parent
         iconText: "󰒮"
         tooltipText: host ? host.t("np.prev") : ""
         foreground: page.fg; hoverColor: page.accent; fontFamily: page.ff
         onClicked: page.act("previous")
       }
+    }
+    Item {
+      width: parent.slot; height: parent.height
       Rectangle {
-        width: Style.space(44); height: width; radius: width / 2
-        color: page.accent
+        anchors.centerIn: parent
+        width: Style.space(46); height: width; radius: width / 2
+        color: playMouse.containsMouse ? Qt.rgba(page.accent.r, page.accent.g, page.accent.b, 0.22)
+                                       : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.08)
+        Behavior on color { ColorAnimation { duration: 120 } }
         Text {
           anchors.centerIn: parent
           text: page.playing ? "󰏤" : "󰐊"
-          color: host ? host.bgc : "black"
-          font.family: page.ff; font.pixelSize: Style.space(22)
+          color: playMouse.containsMouse ? page.accent : page.fg
+          font.family: page.ff; font.pixelSize: Style.space(26)
         }
         MouseArea {
+          id: playMouse
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: page.act("playPause")
         }
       }
+    }
+    Item {
+      width: parent.slot; height: parent.height
       PanelActionButton {
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.centerIn: parent
         iconText: "󰒭"
         tooltipText: host ? host.t("np.next") : ""
         foreground: page.fg; hoverColor: page.accent; fontFamily: page.ff
         onClicked: page.act("next")
       }
+    }
+    Item {
+      width: parent.slot; height: parent.height
       PanelActionButton {
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.centerIn: parent
         readonly property int loop: page.player ? page.player.loopState : MprisLoopState.None
         iconText: loop === MprisLoopState.Track ? "󰑘" : "󰑖"
         tooltipText: host ? host.t("np.repeat") : ""
@@ -346,52 +366,5 @@ Column {
         }
       }
     }
-  }
-
-  // ---- player volume ----
-  Row {
-    visible: page.hasTrack && page.player !== null && !!page.player.volumeSupported
-    width: parent.width
-    spacing: Style.spacing.sm
-    Text {
-      anchors.verticalCenter: parent.verticalCenter
-      text: Model.volumeGlyph(page.player ? page.player.volume : 0, false)
-      color: page.fg
-      font.family: page.ff; font.pixelSize: Style.font.icon
-    }
-    HubSlider {
-      anchors.verticalCenter: parent.verticalCenter
-      width: parent.width - Style.space(40)
-      minimum: 0; maximum: 1
-      value: page.player ? page.player.volume : 0
-      fillColor: page.accent
-      onMoved: function(v) { if (page.player) page.player.volume = v }
-    }
-  }
-
-  // ---- spectrum ----
-  Spectrum {
-    visible: page.hasTrack && page.showSpectrum
-    width: parent.width
-    height: Style.space(40)
-    levels: host && host.cava ? host.cava.levels : []
-    style: host ? String(host.opt("spectrumStyle", "bars")) : "bars"
-    color: Qt.rgba(page.accent.r, page.accent.g, page.accent.b, 0.55)
-    colorTop: page.accent
-  }
-
-  // ---- source picker ----
-  Dropdown {
-    visible: page.sources.length > 1
-    width: parent.width
-    label: host ? host.t("np.source") : ""
-    options: page.sources.map(function(p) {
-      return { value: page.media.playerKey(p), label: page.media.labelFor(p) + (p.isPlaying ? "  ▶" : "") }
-    })
-    value: page.media && page.player ? page.media.playerKey(page.player) : ""
-    foreground: page.fg
-    accent: page.accent
-    fontFamily: page.ff
-    onChanged: function(v) { if (page.media) page.media.selectPlayer(v) }
   }
 }

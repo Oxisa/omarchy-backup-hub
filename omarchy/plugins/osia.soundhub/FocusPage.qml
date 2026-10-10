@@ -1,6 +1,5 @@
 import QtQuick
 import qs.Commons
-import qs.Ui
 
 // Focus: ambient sounds to mix (rain, café, waves…).
 //   header card  big play/stop, status, master volume, clear
@@ -11,7 +10,7 @@ import qs.Ui
 Column {
   id: page
   property var host: null
-  spacing: Style.spacing.md
+  spacing: HubStyle.gap
 
   readonly property var ambient: host ? host.ambient : null
   readonly property color fg: host ? host.fg : "white"
@@ -23,25 +22,22 @@ Column {
   function t(k, a) { return host ? host.t(k, a) : k }
 
   // ======== header card ========
-  Rectangle {
+  HubCard {
     width: parent.width
-    height: headerRow.implicitHeight + Style.spacing.md * 2
-    radius: page.radius
-    color: Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.04)
-    border.width: 1
-    border.color: Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.06)
+    height: headerRow.implicitHeight + HubStyle.pad * 2
+    fg: page.fg; accent: page.accent
 
     Row {
       id: headerRow
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
-      anchors.margins: Style.spacing.md
-      spacing: Style.spacing.md
+      anchors.margins: HubStyle.pad
+      spacing: HubStyle.pad
 
       // play / stop with a pulsing ring while the mix plays
       Item {
-        width: Style.space(56); height: width
+        width: Style.space(48); height: width
         anchors.verticalCenter: parent.verticalCenter
 
         Rectangle {
@@ -71,7 +67,7 @@ Column {
             anchors.centerIn: parent
             text: page.playing ? "󰏤" : "󰐊"
             color: page.playing ? (host ? host.bgc : "black") : page.fg
-            font.family: page.ff; font.pixelSize: Style.space(24)
+            font.family: page.ff; font.pixelSize: Style.space(21)
           }
           MouseArea {
             anchors.fill: parent
@@ -83,7 +79,7 @@ Column {
 
       Column {
         anchors.verticalCenter: parent.verticalCenter
-        width: parent.width - Style.space(56) - clearBtn.width - parent.spacing * 2
+        width: parent.width - Style.space(48) - clearBtn.width - parent.spacing * 2
         spacing: Style.space(6)
 
         Text {
@@ -118,14 +114,14 @@ Column {
         }
       }
 
-      PanelActionButton {
+      HubChip {
         id: clearBtn
         anchors.verticalCenter: parent.verticalCenter
-        iconText: "󰆴"
-        tooltipText: page.t("focus.clear")
+        iconOnly: true
+        icon: "󰆴"
+        label: page.t("focus.clear")
         enabled: page.selectedCount > 0
-        opacity: enabled ? 1 : 0.35
-        foreground: page.fg; hoverColor: host ? host.urgent : "red"; fontFamily: page.ff
+        fg: page.fg; accent: page.accent; fontFamily: page.ff
         onClicked: if (page.ambient) page.ambient.clearAll()
       }
     }
@@ -150,14 +146,12 @@ Column {
         readonly property int vol: page.ambient ? (page.ambient.volumes, page.ambient.volumeOf(sid)) : 0
 
         width: grid.tileW
-        height: Style.space(92)
-        radius: page.radius
-        color: on ? Qt.rgba(page.accent.r, page.accent.g, page.accent.b, 0.12)
-             : tileMouse.containsMouse ? Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.07)
-             : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.035)
-        border.width: 1
-        border.color: on ? Qt.rgba(page.accent.r, page.accent.g, page.accent.b, 0.55)
-                         : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.05)
+        height: Style.space(84)
+        radius: HubStyle.radius
+        color: on ? HubStyle.tint(page.accent, 0.14)
+             : HubStyle.tint(page.fg, tileMouse.containsMouse ? HubStyle.surfaceHover : HubStyle.surface)
+        border.width: on ? 1 : 0
+        border.color: HubStyle.tint(page.accent, 0.45)
         Behavior on color { ColorAnimation { duration: 160 } }
 
         MouseArea {
@@ -173,13 +167,13 @@ Column {
 
         Column {
           anchors.horizontalCenter: parent.horizontalCenter
-          y: tile.on ? Style.space(10) : (parent.height - implicitHeight) / 2
+          y: tile.on ? Style.space(8) : (parent.height - implicitHeight) / 2
           Behavior on y { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
           spacing: Style.space(6)
 
           Rectangle {                         // icon disc
             anchors.horizontalCenter: parent.horizontalCenter
-            width: Style.space(38); height: width; radius: width / 2
+            width: Style.space(34); height: width; radius: width / 2
             color: tile.on ? page.accent : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.08)
             Behavior on color { ColorAnimation { duration: 180 } }
             SequentialAnimation on scale {
@@ -243,7 +237,7 @@ Column {
     horizontalAlignment: Text.AlignHCenter
     wrapMode: Text.Wrap
     text: page.t("focus.credit")
-    color: Qt.darker(page.fg, 1.8)
-    font.family: page.ff; font.pixelSize: Style.font.caption - 1
+    color: Qt.darker(page.fg, 2.0)
+    font.family: page.ff; font.pixelSize: Style.font.caption - 2
   }
 }
