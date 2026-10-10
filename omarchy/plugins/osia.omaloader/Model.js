@@ -1,6 +1,6 @@
 .pragma library
 
-// All yt-dlp / ffmpeg decisions for the Video Grabber plugin. QML stays about
+// All yt-dlp / ffmpeg decisions for the Omaloader plugin. QML stays about
 // presentation; the command building and output parsing live here.
 
 // ---- dropdown option sets --------------------------------------------------
@@ -29,6 +29,45 @@ function audioOptions() {
     { value: "192",  label: "~192 kbps" },
     { value: "128",  label: "~128 kbps" },
     { value: "none", label: "Без звука" }
+  ]
+}
+
+// Settings tab option sets.
+function containerOptions() {
+  return [
+    { value: "auto", label: "Как на сайте" },
+    { value: "mp4",  label: "MP4 (совместимый)" },
+    { value: "mkv",  label: "MKV" },
+    { value: "webm", label: "WebM" }
+  ]
+}
+
+function audioFormatOptions() {
+  return [
+    { value: "m4a",  label: "M4A (AAC)" },
+    { value: "mp3",  label: "MP3" },
+    { value: "opus", label: "Opus" },
+    { value: "flac", label: "FLAC" }
+  ]
+}
+
+function cookiesOptions() {
+  return [
+    { value: "",         label: "Не использовать" },
+    { value: "chromium", label: "Chromium" },
+    { value: "chrome",   label: "Chrome" },
+    { value: "brave",    label: "Brave" },
+    { value: "firefox",  label: "Firefox" }
+  ]
+}
+
+function rateOptions() {
+  return [
+    { value: "",    label: "Без ограничения" },
+    { value: "1M",  label: "1 МБ/с" },
+    { value: "2M",  label: "2 МБ/с" },
+    { value: "5M",  label: "5 МБ/с" },
+    { value: "10M", label: "10 МБ/с" }
   ]
 }
 
@@ -70,12 +109,74 @@ function shq(s) {
   return "'" + String(s === undefined || s === null ? "" : s).replace(/'/g, "'\\''") + "'"
 }
 
+// ---- proxy -----------------------------------------------------------------
+
+// Proxies apply to this plugin's yt-dlp / curl calls only, never system-wide.
+function validProxy(u) {
+  return /^(https?|socks4a?|socks5h?):\/\/[^\s\/]+(:\d+)?\/?$/i.test(String(u || "").trim())
+}
+
+// Hide a password in user:pass@host for display.
+function maskProxy(u) {
+  return String(u || "").replace(/^([a-z0-9]+:\/\/[^:@\/]+):[^@\/]*@/i, "$1:•••@")
+}
+
+// curl a tiny YouTube endpoint through the proxy; prints "<code> <seconds>".
+function proxyTestCommand(u) {
+  return ["curl", "-sS", "-o", "/dev/null", "-w", "%{http_code} %{time_total}",
+          "--max-time", "10", "--proxy", String(u), "https://www.youtube.com/generate_204"]
+}
+
+function parseProxyTest(out, exitCode) {
+  var m = /^(\d{3})\s+([\d.]+)/.exec(String(out || "").trim())
+  if (exitCode !== 0 || !m || m[1] === "000") return { ok: false, text: "Нет связи" }
+  var ms = Math.round(parseFloat(m[2]) * 1000)
+  var code = parseInt(m[1], 10)
+  if (code >= 400) return { ok: false, text: "Ответ " + code }
+  return { ok: true, text: "OK · " + ms + " мс" }
+}
+
+// Preview thumbnails go through the same proxy as yt-dlp, so they are
+// fetched with curl into a local file instead of letting Qt load the URL.
+function thumbCommand(url, proxy, dest) {
+  var a = ["curl", "-sSL", "--max-time", "15", "-o", String(dest)]
+  if (proxy) a.push("--proxy", String(proxy))
+  a.push(String(url))
+  return a
+}
+
+// ---- shared yt-dlp options ---------------------------------------------------
+
+// Network-side flags every yt-dlp call gets (preview and download alike).
+function networkArgs(opts) {
+  opts = opts || {}
+  var a = []
+  if (opts.proxy) a.push("--proxy", String(opts.proxy))
+  if (opts.cookies) a.push("--cookies-from-browser", String(opts.cookies))
+  return a
+}
+
+function infoCommand(url, opts) {
+  return ["yt-dlp", "-J", "--no-playlist", "--no-warnings", "--skip-download"]
+    .concat(networkArgs(opts), [String(url)])
+}
+
+// Download-only flags shared by the plain and GIF paths.
+function transferArgs(opts) {
+  opts = opts || {}
+  var a = []
+  if (opts.rate) a.push("-r", String(opts.rate))
+  if (opts.fragments) a.push("-N", "4")
+  return a
+}
+
 // ---- command building ------------------------------------------------------
 
 // Returns { argv: [...], gif: bool }. argv is passed to Process as
 // ["bash","-lc", <string>] so one pipeline can chain yt-dlp -> ffmpeg.
 function buildCommand(o) {
-  // o: { url, video, audio, dir }
+  // o: { url, video, audio, dir, opts }; opts as collected from the settings tab
+  var opts = o.opts || {}
   var dir  = String(o.dir || "").trim()
   var tmpl = dir + "/%(title).180B [%(id)s].%(ext)s"
   var url  = shq(o.url)
@@ -87,7 +188,8 @@ function buildCommand(o) {
     var sel = "bv*[height<=" + g.h + "]/b[height<=" + g.h + "]"
     var script =
       'set -e; mkdir -p ' + shq(dir) + '; ' +
-      'src=$(yt-dlp --newline --no-playlist --no-warnings -f ' + shq(sel) +
+      'src=$(yt-dlp --newline --no-playlist --no-warnings ' +
+        networkArgs(opts).concat(transferArgs(opts)).map(shq).join(" ") + ' -f ' + shq(sel) +
         ' -o ' + shq(tmpl) + ' --print after_move:filepath --no-simulate ' + url + ' | tail -n1); ' +
       '[ -f "$src" ] || { echo "ERROR: download produced no file" >&2; exit 3; }; ' +
       'out="${src%.*}.gif"; ' +
@@ -98,15 +200,23 @@ function buildCommand(o) {
     return { argv: ["bash", "-lc", script], gif: true }
   }
 
-  var args = ["yt-dlp", "--newline", "--no-playlist", "--no-warnings",
-              "--embed-metadata",
-              "-f", formatSelector(o.video, o.audio)]
-  if (o.video === "none") args.push("-x", "--audio-format", "m4a", "--audio-quality", "0")
+  var args = ["yt-dlp", "--newline", opts.playlist ? "--yes-playlist" : "--no-playlist",
+              "--no-warnings", "--embed-metadata"]
+    .concat(networkArgs(opts), transferArgs(opts), ["-f", formatSelector(o.video, o.audio)])
+  if (o.video === "none") {
+    args.push("-x", "--audio-format", opts.audioFormat || "m4a", "--audio-quality", "0")
+  } else {
+    if (opts.container && opts.container !== "auto") args.push("--remux-video", String(opts.container))
+    if (opts.embedSubs) args.push("--embed-subs", "--sub-langs", String(opts.subLangs || "ru,en"))
+  }
+  if (opts.embedThumb) args.push("--embed-thumbnail")
+  if (opts.sponsor) args.push("--sponsorblock-remove", "sponsor,selfpromo,interaction")
   args.push("-o", tmpl, "--print", "after_move:filepath", "--no-simulate", String(o.url || ""))
 
   // join into a single quoted string, then echo DONE:<path> from the printed line
   var joined = args.map(shq).join(" ")
-  var script2 = 'mkdir -p ' + shq(dir) + '; ' +
+  // pipefail: rc must be yt-dlp's, not tail's, or a failed run reads as done
+  var script2 = 'set -o pipefail; mkdir -p ' + shq(dir) + '; ' +
                 'p=$(' + joined + ' | tail -n1); rc=$?; ' +
                 '[ $rc -eq 0 ] && [ -n "$p" ] && echo "DONE:$p"; exit $rc'
   return { argv: ["bash", "-lc", script2], gif: false }
@@ -131,7 +241,8 @@ function friendlyError(e) {
   var s = String(e || "")
   if (/HTTP Error 403|403 Forbidden/i.test(s)) return "Сайт отклонил загрузку (403). Обнови yt-dlp или попробуй другое видео."
   if (/Unsupported URL|is not a valid URL/i.test(s)) return "Ссылка не поддерживается."
-  if (/Private video|members-only|Sign in/i.test(s)) return "Видео приватное / требует входа."
+  if (/Private video|members-only|Sign in/i.test(s)) return "Видео приватное / требует входа. Попробуй cookies браузера в настройках."
+  if (/proxy|Unable to connect|Connection refused|timed out/i.test(s)) return "Нет связи. Проверь прокси в настройках."
   if (/Video unavailable/i.test(s)) return "Видео недоступно."
   if (/ffmpeg/i.test(s)) return "Ошибка ffmpeg при конвертации в GIF."
   return s.length > 140 ? s.slice(0, 140) + "…" : s

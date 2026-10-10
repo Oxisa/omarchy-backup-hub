@@ -4,14 +4,14 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Video Grabber — a download button in the bar. Click to open the
+// Omaloader — a download button in the bar. Click to open the
 // paste-preview-download panel; right-click opens it prefilled from the
 // clipboard. The nested Panel owns the flow; this widget owns the button and
 // the bar lifecycle contract (opened / open / close / popout helpers), like
 // the built-in clock and OmaVideos.
 BarWidget {
   id: root
-  moduleName: "osia.ytgrab"
+  moduleName: "osia.omaloader"
 
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
   function open()        { if (panelLoader.item) panelLoader.item.open() }
@@ -19,6 +19,7 @@ BarWidget {
   function togglePanel() { if (panelLoader.item) panelLoader.item.toggle() }
   function pasteFromClipboard() { open(); if (panelLoader.item) panelLoader.item.pasteFromClipboard() }
   function openFolder()  { if (panelLoader.item) panelLoader.item.openFolder() }
+  function openTab(i)    { if (panelLoader.item) { panelLoader.item.tab = i; panelLoader.item.open() } }
 
   // popout coordination, mirroring the clock / OmaVideos
   readonly property real openPanelIndicatorWidth: Style.bar.iconCanvas
@@ -51,11 +52,13 @@ BarWidget {
   }
 
   IpcHandler {
-    target: "osia.ytgrab"
+    target: "osia.omaloader"
     function open(): void { root.open() }
     function close(): void { root.close() }
     function toggle(): void { root.togglePanel() }
     function paste(): void { root.pasteFromClipboard() }
+    function downloader(): void { root.openTab(0) }
+    function settings(): void { root.openTab(1) }
   }
 
   BarIconButton {
@@ -63,7 +66,7 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     hasVisualContent: true
-    tooltipText: "Video Grabber — скачать ролик"
+    tooltipText: "Omaloader"
 
     Text {
       anchors.centerIn: parent
