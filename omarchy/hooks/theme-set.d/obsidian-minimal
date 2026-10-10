@@ -1,0 +1,195 @@
+#!/bin/bash
+# Omarchy theme-set hook: keep kepano's Minimal theme for Obsidian, but drive
+# its colours from the active Omarchy theme.
+#
+# Adds an "Omasidian" colour scheme to Minimal. Runs after every
+# `omarchy theme set` (theme slug in $1). For every vault in
+# ~/.config/obsidian/obsidian.json whose appearance.json uses the Minimal theme:
+#   - writes .obsidian/snippets/omasidian.css: Minimal colour variables
+#     (--bg*, --ui*, --tx*, --ax*, --color-*) generated from the theme's
+#     colors.toml, scoped to the body classes minimal-omasidian-dark/-light
+#   - enables that snippet in appearance.json once, if it is not enabled yet
+#   - patches the Minimal Theme Settings plugin so that "Omasidian" shows up in
+#     its light and dark colour scheme dropdowns
+# Obsidian watches the snippets folder, so recolouring lands live. The dropdown
+# entry appears after the next Obsidian restart, and again after each plugin
+# update (an update overwrites main.js; a scheme that is already selected keeps
+# working meanwhile, because the plugin adds the saved class to <body> as is).
+# If Obsidian was open while the hook enabled the snippet for the first time,
+# switch it on in Settings → Appearance → CSS snippets instead.
+#
+# Installed copy lives in ~/.config/omarchy/hooks/theme-set.d/obsidian-minimal.
+
+set -uo pipefail
+
+COLORS="$HOME/.local/state/omarchy/current/theme/colors.toml"
+VAULTS="$HOME/.config/obsidian/obsidian.json"
+SNIPPET="omasidian"
+SCHEME="minimal-omasidian"
+[ -r "$COLORS" ] && [ -r "$VAULTS" ] || exit 0
+command -v jq >/dev/null || exit 0
+
+col() {
+  sed -n "s/^$1[[:space:]]*=[[:space:]]*\"\{0,1\}\(#[0-9A-Fa-f]\{6\}\).*/\1/p" "$COLORS" | head -n1
+}
+MODE=$(sed -n 's/^mode[[:space:]]*=[[:space:]]*"\{0,1\}\([a-z]*\).*/\1/p' "$COLORS" | head -n1)
+[ -n "$MODE" ] || MODE=dark
+
+BG=$(col background);         [ -n "$BG" ] || BG="#101315"
+FG=$(col foreground);         [ -n "$FG" ] || FG="#cacccc"
+BG_DARK=$(col dark_background)
+ACCENT=$(col accent);         [ -n "$ACCENT" ] || ACCENT="$FG"
+SELECTION=$(col selection);   [ -n "$SELECTION" ] || SELECTION="$ACCENT"
+RED=$(col red);               [ -n "$RED" ] || RED="$ACCENT"
+ORANGE=$(col orange);         [ -n "$ORANGE" ] || ORANGE="$RED"
+YELLOW=$(col yellow);         [ -n "$YELLOW" ] || YELLOW="$ACCENT"
+GREEN=$(col green);           [ -n "$GREEN" ] || GREEN="$ACCENT"
+CYAN=$(col cyan);             [ -n "$CYAN" ] || CYAN="$ACCENT"
+BLUE=$(col blue);             [ -n "$BLUE" ] || BLUE="$ACCENT"
+MAGENTA=$(col magenta);       [ -n "$MAGENTA" ] || MAGENTA="$ACCENT"
+PINK=$(col bright_magenta);   [ -n "$PINK" ] || PINK="$MAGENTA"
+
+# Sidebar background: the theme's darker shade if it has one, else a mix.
+if [ -n "$BG_DARK" ]; then BG2="$BG_DARK"
+elif [ "$MODE" = "light" ]; then BG2="color-mix(in oklab, $BG, black 4%)"
+else BG2="color-mix(in oklab, $BG, black 18%)"; fi
+
+rgb() { # #rrggbb -> r, g, b
+  local h=${1#\#}
+  printf '%d, %d, %d' "0x${h:0:2}" "0x${h:2:2}" "0x${h:4:2}"
+}
+
+hsl() { # #rrggbb -> "h s% l%" (Minimal still builds a few colours from these)
+  local h=${1#\#}
+  awk -v r=$((16#${h:0:2})) -v g=$((16#${h:2:2})) -v b=$((16#${h:4:2})) 'BEGIN {
+    r/=255; g/=255; b/=255
+    mx=r; if (g>mx) mx=g; if (b>mx) mx=b
+    mn=r; if (g<mn) mn=g; if (b<mn) mn=b
+    l=(mx+mn)/2; d=mx-mn; hh=0; s=0
+    if (d>0) {
+      s = (l>0.5) ? d/(2-mx-mn) : d/(mx+mn)
+      if (mx==r)      hh=(g-b)/d + (g<b ? 6 : 0)
+      else if (mx==g) hh=(b-r)/d + 2
+      else            hh=(r-g)/d + 4
+      hh*=60
+    }
+    printf "%d %d%% %d%%", hh+0.5, s*100+0.5, l*100+0.5
+  }'
+}
+
+read -r ACC_H ACC_S ACC_L <<<"$(hsl "$ACCENT")"
+read -r BASE_H BASE_S BASE_L <<<"$(hsl "$BG")"
+
+gen() {
+  cat <<CSS
+/* Omasidian: Minimal colour scheme driven by the active Omarchy theme.
+   Generated from ~/.local/state/omarchy/current/theme/colors.toml by the
+   omarchy theme-set hook "obsidian-minimal"; rewritten on every
+   \`omarchy theme set\`, so do not edit by hand.
+   Pick it in Minimal Theme Settings → Color scheme → Omasidian. The body
+   prefix outranks Minimal's own schemes and Style Settings overrides. */
+body.theme-dark.$SCHEME-dark,
+body.theme-light.$SCHEME-light {
+  --base-h: $BASE_H;
+  --base-s: $BASE_S;
+  --base-l: $BASE_L;
+  --accent-h: $ACC_H;
+  --accent-s: $ACC_S;
+  --accent-l: $ACC_L;
+
+  --bg1: $BG;
+  --bg2: $BG2;
+  --bg3: color-mix(in srgb, $FG 12%, transparent);
+  --ui1: color-mix(in oklab, $BG, $FG 14%);
+  --ui2: color-mix(in oklab, $BG, $FG 24%);
+  --ui3: color-mix(in oklab, $BG, $FG 36%);
+  --tx1: $FG;
+  --tx2: color-mix(in oklab, $FG, $BG 30%);
+  --tx3: color-mix(in oklab, $FG, $BG 50%);
+  --tx4: color-mix(in oklab, $FG, $BG 62%);
+  --ax1: $ACCENT;
+  --ax2: color-mix(in oklab, $ACCENT, $FG 25%);
+  --ax3: $ACCENT;
+  --hl1: color-mix(in srgb, $SELECTION 70%, transparent);
+  --hl2: color-mix(in srgb, $YELLOW 30%, transparent);
+  --sp1: $BG;
+
+  --color-accent: $ACCENT;
+  --color-red: $RED;
+  --color-orange: $ORANGE;
+  --color-yellow: $YELLOW;
+  --color-green: $GREEN;
+  --color-cyan: $CYAN;
+  --color-blue: $BLUE;
+  --color-purple: $MAGENTA;
+  --color-pink: $PINK;
+  --color-red-rgb: $(rgb "$RED");
+  --color-orange-rgb: $(rgb "$ORANGE");
+  --color-yellow-rgb: $(rgb "$YELLOW");
+  --color-green-rgb: $(rgb "$GREEN");
+  --color-cyan-rgb: $(rgb "$CYAN");
+  --color-blue-rgb: $(rgb "$BLUE");
+  --color-purple-rgb: $(rgb "$MAGENTA");
+  --color-pink-rgb: $(rgb "$PINK");
+}
+CSS
+}
+
+body=$(gen) || exit 0
+[ -n "$body" ] || exit 0
+
+jq -r '.vaults | values[].path' "$VAULTS" 2>/dev/null | while read -r vault; do
+  conf="$vault/.obsidian"
+  appearance="$conf/appearance.json"
+  [ -r "$appearance" ] || continue
+  [ "$(jq -r '.cssTheme // ""' "$appearance" 2>/dev/null)" = "Minimal" ] || continue
+
+  mkdir -p "$conf/snippets" || continue
+  target="$conf/snippets/$SNIPPET.css"
+  if ! { [ -f "$target" ] && printf '%s\n' "$body" | cmp -s - "$target"; }; then
+    tmp=$(mktemp "$conf/snippets/.$SNIPPET.XXXXXX") || continue
+    if printf '%s\n' "$body" >"$tmp"; then
+      chmod 644 "$tmp"; mv -f "$tmp" "$target" || rm -f "$tmp"
+    else
+      rm -f "$tmp"
+    fi
+  fi
+
+  # Enable the snippet once; never touch the list again after that, so turning
+  # it off by hand in Obsidian sticks.
+  marker="$conf/snippets/.$SNIPPET.enabled"
+  [ -e "$marker" ] && continue
+  if ! jq -e --arg s "$SNIPPET" '(.enabledCssSnippets // []) | index($s)' "$appearance" >/dev/null 2>&1; then
+    tmp=$(mktemp "$conf/.appearance.XXXXXX") || continue
+    if jq --arg s "$SNIPPET" '.enabledCssSnippets = ((.enabledCssSnippets // []) + [$s])' \
+         "$appearance" >"$tmp" 2>/dev/null; then
+      chmod 644 "$tmp"; mv -f "$tmp" "$appearance" || rm -f "$tmp"
+    else
+      rm -f "$tmp"
+    fi
+  fi
+  : >"$marker"
+done
+
+# Offer the scheme in the Minimal Theme Settings dropdowns. The plugin's list
+# lives in its bundled main.js; each step is a plain string insert, skipped
+# when the anchor is gone (a future plugin version) or the entry is already in.
+jq -r '.vaults | values[].path' "$VAULTS" 2>/dev/null | while read -r vault; do
+  js="$vault/.obsidian/plugins/obsidian-minimal-settings/main.js"
+  [ -w "$js" ] || continue
+  grep -qF "\"$SCHEME-dark\"" "$js" && continue
+  grep -qF '"minimal-default-dark":"Default",' "$js" || continue
+  grep -qF '"minimal-default-light":"Default",' "$js" || continue
+  tmp=$(mktemp "$js.XXXXXX") || continue
+  if sed -e "s/\"minimal-default-dark\":\"Default\",/&\"$SCHEME-dark\":\"Omasidian\",/" \
+         -e "s/\"minimal-default-light\":\"Default\",/&\"$SCHEME-light\":\"Omasidian\",/" \
+         -e "s/removeClass(\"minimal-atom-dark\",/&\"$SCHEME-dark\",/" \
+         -e "s/removeClass(\"minimal-atom-light\",/&\"$SCHEME-light\",/" \
+         "$js" >"$tmp"; then
+    chmod 644 "$tmp"; mv -f "$tmp" "$js" || rm -f "$tmp"
+  else
+    rm -f "$tmp"
+  fi
+done
+
+exit 0

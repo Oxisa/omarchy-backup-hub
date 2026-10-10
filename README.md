@@ -51,6 +51,16 @@ done
 
 ## Приложения
 
+### Obsidian
+
+Хук `omarchy/hooks/theme-set.d/obsidian-minimal` добавляет в тему Minimal (kepano) цветовую схему **Omasidian** в цветах текущей темы Omarchy. Обрабатываются хранилища из `~/.config/obsidian/obsidian.json`, у которых выбрана тема Minimal. Для каждого такого хранилища хук:
+
+- пишет сниппет `.obsidian/snippets/omasidian.css` и обновляет его при каждой смене темы;
+- один раз включает этот сниппет в `appearance.json`. Если потом выключить его вручную, хук не включит его обратно;
+- добавляет пункт «Omasidian» в списки «Light/Dark mode color scheme» плагина Minimal Theme Settings.
+
+Схема выбирается в настройках плагина Minimal Theme Settings. Пункт появится в списке после перезапуска Obsidian. Обновление плагина убирает пункт из списка до следующей смены темы Omarchy, но уже выбранная схема продолжает работать.
+
 ### Vesktop
 
 - Тему refact0r/system24 под цвета текущей темы Omarchy настраивает хук `omarchy/hooks/theme-set.d/system24`. Он ставится через `install.sh`.
