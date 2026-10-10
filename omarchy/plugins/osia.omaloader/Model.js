@@ -1,4 +1,5 @@
 .pragma library
+.import "I18n.js" as I18n
 
 // All yt-dlp / ffmpeg decisions for the Omaloader plugin. QML stays about
 // presentation; the command building and output parsing live here.
@@ -6,16 +7,16 @@
 // ---- dropdown option sets --------------------------------------------------
 
 // Picture quality. A separator row, then the GIF variants below it.
-function videoOptions() {
+function videoOptions(lang) {
   return [
-    { value: "best",   label: "Лучшее" },
+    { value: "best",   label: I18n.t(lang, "opt.best") },
     { value: "2160",   label: "2160p (4K)" },
     { value: "1440",   label: "1440p" },
     { value: "1080",   label: "1080p" },
     { value: "720",    label: "720p" },
     { value: "480",    label: "480p" },
     { value: "360",    label: "360p" },
-    { value: "none",   label: "Без видео — только звук" },
+    { value: "none",   label: I18n.t(lang, "opt.noVideo") },
     { value: "__sep__", label: "──────  GIF  ──────" },
     { value: "gif720", label: "GIF · 720p · 20 fps" },
     { value: "gif480", label: "GIF · 480p · 15 fps" },
@@ -23,20 +24,20 @@ function videoOptions() {
   ]
 }
 
-function audioOptions() {
+function audioOptions(lang) {
   return [
-    { value: "best", label: "Лучшее" },
+    { value: "best", label: I18n.t(lang, "opt.best") },
     { value: "192",  label: "~192 kbps" },
     { value: "128",  label: "~128 kbps" },
-    { value: "none", label: "Без звука" }
+    { value: "none", label: I18n.t(lang, "opt.noAudio") }
   ]
 }
 
 // Settings tab option sets.
-function containerOptions() {
+function containerOptions(lang) {
   return [
-    { value: "auto", label: "Как на сайте" },
-    { value: "mp4",  label: "MP4 (совместимый)" },
+    { value: "auto", label: I18n.t(lang, "opt.containerAuto") },
+    { value: "mp4",  label: I18n.t(lang, "opt.containerMp4") },
     { value: "mkv",  label: "MKV" },
     { value: "webm", label: "WebM" }
   ]
@@ -51,9 +52,9 @@ function audioFormatOptions() {
   ]
 }
 
-function cookiesOptions() {
+function cookiesOptions(lang) {
   return [
-    { value: "",         label: "Не использовать" },
+    { value: "",         label: I18n.t(lang, "opt.cookiesOff") },
     { value: "chromium", label: "Chromium" },
     { value: "chrome",   label: "Chrome" },
     { value: "brave",    label: "Brave" },
@@ -61,14 +62,9 @@ function cookiesOptions() {
   ]
 }
 
-function rateOptions() {
-  return [
-    { value: "",    label: "Без ограничения" },
-    { value: "1M",  label: "1 МБ/с" },
-    { value: "2M",  label: "2 МБ/с" },
-    { value: "5M",  label: "5 МБ/с" },
-    { value: "10M", label: "10 МБ/с" }
-  ]
+function rateOptions(lang) {
+  return [{ value: "", label: I18n.t(lang, "opt.rateOff") }].concat(
+    ["1", "2", "5", "10"].map(function(n) { return { value: n + "M", label: I18n.t(lang, "opt.rate", n) } }))
 }
 
 function isGif(video)      { return String(video || "").indexOf("gif") === 0 }
@@ -127,13 +123,14 @@ function proxyTestCommand(u) {
           "--max-time", "10", "--proxy", String(u), "https://www.youtube.com/generate_204"]
 }
 
+// Returns { ok, key, arg } so the panel can render it in the current language.
 function parseProxyTest(out, exitCode) {
   var m = /^(\d{3})\s+([\d.]+)/.exec(String(out || "").trim())
-  if (exitCode !== 0 || !m || m[1] === "000") return { ok: false, text: "Нет связи" }
+  if (exitCode !== 0 || !m || m[1] === "000") return { ok: false, key: "proxy.noConnection" }
   var ms = Math.round(parseFloat(m[2]) * 1000)
   var code = parseInt(m[1], 10)
-  if (code >= 400) return { ok: false, text: "Ответ " + code }
-  return { ok: true, text: "OK · " + ms + " мс" }
+  if (code >= 400) return { ok: false, key: "proxy.httpCode", arg: code }
+  return { ok: true, key: "proxy.ok", arg: ms }
 }
 
 // Preview thumbnails go through the same proxy as yt-dlp, so they are
@@ -237,14 +234,14 @@ function parseProgress(line) {
   return null
 }
 
-function friendlyError(e) {
+function friendlyError(e, lang) {
   var s = String(e || "")
-  if (/HTTP Error 403|403 Forbidden/i.test(s)) return "Сайт отклонил загрузку (403). Обнови yt-dlp или попробуй другое видео."
-  if (/Unsupported URL|is not a valid URL/i.test(s)) return "Ссылка не поддерживается."
-  if (/Private video|members-only|Sign in/i.test(s)) return "Видео приватное / требует входа. Попробуй cookies браузера в настройках."
-  if (/proxy|Unable to connect|Connection refused|timed out/i.test(s)) return "Нет связи. Проверь прокси в настройках."
-  if (/Video unavailable/i.test(s)) return "Видео недоступно."
-  if (/ffmpeg/i.test(s)) return "Ошибка ffmpeg при конвертации в GIF."
+  if (/HTTP Error 403|403 Forbidden/i.test(s)) return I18n.t(lang, "err.403")
+  if (/Unsupported URL|is not a valid URL/i.test(s)) return I18n.t(lang, "err.unsupported")
+  if (/Private video|members-only|Sign in/i.test(s)) return I18n.t(lang, "err.private")
+  if (/proxy|Unable to connect|Connection refused|timed out/i.test(s)) return I18n.t(lang, "err.network")
+  if (/Video unavailable/i.test(s)) return I18n.t(lang, "err.unavailable")
+  if (/ffmpeg/i.test(s)) return I18n.t(lang, "err.ffmpeg")
   return s.length > 140 ? s.slice(0, 140) + "…" : s
 }
 

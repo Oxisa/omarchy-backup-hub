@@ -5,13 +5,15 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
+import "I18n.js" as I18n
 
 // Omaloader panel, two browser-style tabs:
-//   Downloader — paste a URL, a preview loads (yt-dlp -J), pick picture quality
-//                (or none / GIF) and sound quality (or none), download with
-//                yt-dlp + ffmpeg.
-//   Настройки  — download options and a proxy manager. The proxy applies only to
-//                this plugin's own yt-dlp / curl calls, never system-wide.
+//   Download — paste a URL, a preview loads (yt-dlp -J), pick picture quality
+//              (or none / GIF) and sound quality (or none), download with
+//              yt-dlp + ffmpeg.
+//   Settings — language, download options and a proxy manager. The proxy
+//              applies only to this plugin's own yt-dlp / curl calls, never
+//              system-wide.
 // The bar widget (BarWidget.qml) owns the button; this owns the flow.
 // Downloads keep running while the panel is closed.
 Panel {
@@ -31,7 +33,11 @@ Panel {
   readonly property string home: Quickshell.env("HOME")
   readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
 
-  property int tab: 0                   // 0 downloader | 1 settings
+  property int tab: 0                   // 0 download | 1 settings
+
+  // UI language from the settings tab; English by default.
+  readonly property string lang: String(opt("lang", "en") || "en")
+  function t(key, args) { return I18n.t(root.lang, key, args) }
 
   // Reads straight from `settings`, so bindings follow persist().
   function opt(key, fallback) {
@@ -215,15 +221,14 @@ Panel {
   function startDownload() {
     if (root.running) return
     var u = String(urlField.text || "").trim()
-    if (!u) { root.statusText = "Вставь ссылку на видео."; root.dlState = "idle"; return }
+    if (!u) { root.statusText = root.t("status.needUrl"); root.dlState = "idle"; return }
     if (root.video === "none" && root.audio === "none") {
-      root.statusText = "Выбери видео или звук."; root.dlState = "idle"; return
+      root.statusText = root.t("status.needTrack"); root.dlState = "idle"; return
     }
     if (!root.hasYtdlp || (Model.isGif(root.video) && !root.hasFfmpeg)) {
       root.dlState = "error"; root.indeterminate = false
-      root.statusText = "Нужно: " + (!root.hasYtdlp ? "yt-dlp " : "") +
-        (Model.isGif(root.video) && !root.hasFfmpeg ? "ffmpeg" : "") +
-        "  —  omarchy pkg add yt-dlp ffmpeg"
+      root.statusText = root.t("status.missing", (!root.hasYtdlp ? "yt-dlp " : "") +
+        (Model.isGif(root.video) && !root.hasFfmpeg ? "ffmpeg" : ""))
       return
     }
 
@@ -232,8 +237,8 @@ Panel {
     root.running = true; root.dlState = "running"
     root.indeterminate = true; root.progress = 0
     root.phase = "dl"; root.cancelled = false; root.lastFile = ""; root.errText = ""
-    root.statusText = (Model.isGif(root.video) ? "Загрузка исходника…" : "Загрузка…") +
-      (root.activeProxy ? "  (через прокси)" : "")
+    root.statusText = root.t(Model.isGif(root.video) ? "status.downloadingSource" : "status.downloading") +
+      (root.activeProxy ? root.t("status.viaProxy") : "")
     dlProc.command = c.argv
     dlProc.running = true
   }
@@ -252,10 +257,10 @@ Panel {
     if (p.kind === "dl") {
       root.indeterminate = false
       root.progress = p.percent
-      if (root.phase !== "gif") root.statusText = "Загрузка…  " + Math.round(p.percent) + "%"
+      if (root.phase !== "gif") root.statusText = root.t("status.downloadingPct", Math.round(p.percent))
     } else if (p.kind === "gifstart" || p.kind === "gif") {
       root.phase = "gif"; root.indeterminate = true
-      root.statusText = "Конвертация в GIF…"
+      root.statusText = root.t("status.gif")
     } else if (p.kind === "done") {
       root.lastFile = p.path
     } else if (p.kind === "error") {
@@ -271,25 +276,25 @@ Panel {
       root.running = false
       if (root.cancelled) {
         root.cancelled = false; root.dlState = "idle"
-        root.indeterminate = true; root.statusText = "Отменено."
+        root.indeterminate = true; root.statusText = root.t("status.cancelled")
         return
       }
       if (code !== 0) {
         root.dlState = "error"; root.indeterminate = false
-        root.statusText = code === 127 ? "yt-dlp не установлен."
-          : (Model.friendlyError(root.errText) || ("Ошибка (код " + code + ")."))
+        root.statusText = code === 127 ? root.t("status.noYtdlp")
+          : (Model.friendlyError(root.errText, root.lang) || root.t("status.errorCode", code))
         root.errText = ""
         return
       }
       root.dlState = "done"; root.indeterminate = false; root.progress = 100
-      root.statusText = "Готово — " + (root.lastFile ? Model.baseName(root.lastFile) : root.dlDir)
+      root.statusText = root.t("status.done", root.lastFile ? Model.baseName(root.lastFile) : root.dlDir)
       if (root.opt("notify", true) === true) root.notifyDone()
       if (root.opt("openAfter", false) === true) root.openFolder()
     }
   }
 
   function notifyDone() {
-    var msg = root.lastFile ? Model.baseName(root.lastFile) : ("Сохранено в " + root.dlDir)
+    var msg = root.lastFile ? Model.baseName(root.lastFile) : root.t("notify.savedTo", root.dlDir)
     Quickshell.execDetached(["sh", "-lc",
       "command -v omarchy-notification-send >/dev/null && omarchy-notification-send -g 󰇚 'Omaloader' " +
       Model.shq(msg) + " || notify-send -a 'Omaloader' 'Omaloader' " + Model.shq(msg)])
@@ -300,11 +305,11 @@ Panel {
     name = String(name || "").trim()
     url = String(url || "").trim()
     if (!Model.validProxy(url)) {
-      root.proxyFormError = "Адрес вида socks5://host:port или http://user:pass@host:port"
+      root.proxyFormError = root.t("proxy.badUrl")
       return false
     }
     for (var i = 0; i < root.proxies.length; i++) {
-      if (root.proxies[i].url === url) { root.proxyFormError = "Такой прокси уже есть."; return false }
+      if (root.proxies[i].url === url) { root.proxyFormError = root.t("proxy.duplicate"); return false }
     }
     var list = root.proxies.slice()
     list.push({ name: name || Model.maskProxy(url).replace(/^[a-z0-9]+:\/\//i, ""), url: url })
@@ -326,7 +331,7 @@ Panel {
   function testProxy(url) {
     if (testProc.running) return
     root.testingUrl = url
-    var st = Object.assign({}, root.proxyStatus); st[url] = { ok: true, text: "Проверка…" }; root.proxyStatus = st
+    var st = Object.assign({}, root.proxyStatus); st[url] = { ok: true, key: "proxy.testing" }; root.proxyStatus = st
     testProc.command = Model.proxyTestCommand(url)
     testProc.running = true
   }
@@ -380,8 +385,8 @@ Panel {
 
           Repeater {
             model: [
-              { icon: "󰇚", label: "Downloader" },
-              { icon: "󰒓", label: "Настройки" }
+              { icon: "󰇚", key: "tab.download" },
+              { icon: "󰒓", key: "tab.settings" }
             ]
 
             delegate: Rectangle {
@@ -420,7 +425,7 @@ Panel {
                   font.pixelSize: Style.font.body
                 }
                 Text {
-                  text: tabItem.modelData.label
+                  text: root.t(tabItem.modelData.key)
                   color: tabItem.current ? root.fg : Qt.darker(root.fg, 1.4)
                   font.family: root.ff
                   font.pixelSize: Style.font.body
@@ -476,7 +481,7 @@ Panel {
               height: parent.height
               foreground: root.fg
               accent: root.accent
-              placeholderText: "Вставь ссылку на видео…"
+              placeholderText: root.t("url.placeholder")
               verticalPadding: 6
               onTextChanged: root.onUrlEdited()
               onAccepted: if (!root.running) root.startDownload()
@@ -487,7 +492,7 @@ Panel {
               width: parent.height
               height: parent.height
               iconText: "󰆒"
-              tooltipText: "Вставить из буфера"
+              tooltipText: root.t("url.paste")
               foreground: root.fg
               hoverColor: root.accent
               fontFamily: root.ff
@@ -557,8 +562,8 @@ Panel {
             Text {
               anchors.centerIn: parent
               visible: !thumb.visible
-              text: root.infoLoading ? "Загрузка превью…"
-                  : (root.previewTitle !== "" ? root.previewTitle : "Превью появится здесь")
+              text: root.infoLoading ? root.t("preview.loading")
+                  : (root.previewTitle !== "" ? root.previewTitle : root.t("preview.empty"))
               width: parent.width - Style.spacing.md * 2
               horizontalAlignment: Text.AlignHCenter
               elide: Text.ElideRight
@@ -572,7 +577,7 @@ Panel {
               anchors.right: parent.right
               anchors.margins: Style.spacing.sm
               visible: root.activeProxy !== ""
-              text: "󰖟 прокси"
+              text: root.t("preview.proxy")
               color: thumb.visible ? "white" : root.accent
               font.family: root.ff
               font.pixelSize: Style.font.caption
@@ -587,8 +592,8 @@ Panel {
             Dropdown {
               id: videoDd
               width: (parent.width - parent.spacing) / 2
-              label: "Картинка"
-              options: Model.videoOptions()
+              label: root.t("quality.video")
+              options: Model.videoOptions(root.lang)
               value: root.video
               foreground: root.fg
               accent: root.accent
@@ -604,8 +609,8 @@ Panel {
             Dropdown {
               id: audioDd
               width: (parent.width - parent.spacing) / 2
-              label: "Звук"
-              options: Model.audioOptions()
+              label: root.t("quality.audio")
+              options: Model.audioOptions(root.lang)
               value: root.audio
               enabled: !Model.isGif(root.video)
               opacity: enabled ? 1.0 : 0.45
@@ -622,8 +627,8 @@ Panel {
             height: Style.spacing.controlHeight
             bordered: true
             text: root.running
-              ? "Отмена"
-              : (Model.isGif(root.video) ? "Скачать GIF" : (root.video === "none" ? "Скачать звук" : "Скачать"))
+              ? root.t("btn.cancel")
+              : root.t(Model.isGif(root.video) ? "btn.downloadGif" : (root.video === "none" ? "btn.downloadAudio" : "btn.download"))
             iconText: root.running ? "󰜺" : "󰇚"
             foreground: root.fg
             accent: root.accent
@@ -688,13 +693,29 @@ Panel {
             width: settingsFlick.width - Style.space(8)   // room for the scrollbar
             spacing: Style.spacing.md
 
-            // ---- proxy ----
-            PanelSectionHeader { width: parent.width; text: "ПРОКСИ"; foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
+            // ---- interface ----
+            PanelSectionHeader { width: parent.width; text: root.t("sec.interface"); foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
 
             Dropdown {
               width: parent.width
-              label: "Активный прокси"
-              options: [{ value: "", label: "Без прокси" }].concat(root.proxies.map(function(p) {
+              label: root.t("set.language")
+              options: I18n.LANGS
+              value: root.lang
+              foreground: root.fg
+              accent: root.accent
+              fontFamily: root.ff
+              onChanged: function(v) { root.persist({ lang: v }) }
+            }
+
+            PanelSeparator { width: parent.width; foreground: root.fg }
+
+            // ---- proxy ----
+            PanelSectionHeader { width: parent.width; text: root.t("sec.proxy"); foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
+
+            Dropdown {
+              width: parent.width
+              label: root.t("proxy.active")
+              options: [{ value: "", label: root.t("proxy.none") }].concat(root.proxies.map(function(p) {
                 return { value: p.url, label: p.name }
               }))
               value: root.activeProxy
@@ -740,7 +761,7 @@ Panel {
                   Text {
                     width: parent.width
                     text: Model.maskProxy(proxyRow.modelData.url) +
-                          (proxyRow.status ? "   ·   " + proxyRow.status.text : "")
+                          (proxyRow.status ? "   ·   " + root.t(proxyRow.status.key, proxyRow.status.arg) : "")
                     color: proxyRow.status && !proxyRow.status.ok ? root.urgent : Qt.darker(root.fg, 1.4)
                     font.family: root.ff
                     font.pixelSize: Style.font.caption
@@ -757,7 +778,7 @@ Panel {
 
                   PanelActionButton {
                     iconText: proxyRow.isActive ? "󰄬" : "󰐕"
-                    tooltipText: proxyRow.isActive ? "Активен" : "Сделать активным"
+                    tooltipText: root.t(proxyRow.isActive ? "proxy.isActive" : "proxy.makeActive")
                     foreground: proxyRow.isActive ? root.accent : root.fg
                     hoverColor: root.accent
                     fontFamily: root.ff
@@ -765,7 +786,7 @@ Panel {
                   }
                   PanelActionButton {
                     iconText: "󰓅"
-                    tooltipText: "Проверить связь"
+                    tooltipText: root.t("proxy.test")
                     foreground: root.fg
                     hoverColor: root.accent
                     fontFamily: root.ff
@@ -774,7 +795,7 @@ Panel {
                   }
                   PanelActionButton {
                     iconText: "󰆴"
-                    tooltipText: "Удалить"
+                    tooltipText: root.t("proxy.remove")
                     foreground: root.fg
                     hoverColor: root.urgent
                     fontFamily: root.ff
@@ -795,7 +816,7 @@ Panel {
                 height: parent.height
                 foreground: root.fg
                 accent: root.accent
-                placeholderText: "Имя"
+                placeholderText: root.t("proxy.name")
                 verticalPadding: 6
                 onAccepted: proxyUrl.forceActiveFocus()
               }
@@ -815,7 +836,7 @@ Panel {
                 width: parent.height
                 height: parent.height
                 iconText: "󰐕"
-                tooltipText: "Добавить прокси"
+                tooltipText: root.t("proxy.add")
                 foreground: root.fg
                 hoverColor: root.accent
                 fontFamily: root.ff
@@ -832,21 +853,21 @@ Panel {
               font.pixelSize: Style.font.caption
               wrapMode: Text.Wrap
               text: root.proxyFormError !== "" ? root.proxyFormError
-                : "Действует только для Omaloader: превью и загрузка. Поддерживаются http, https, socks4 и socks5."
+                : root.t("proxy.hint")
               color: root.proxyFormError !== "" ? root.urgent : Qt.darker(root.fg, 1.5)
             }
 
             PanelSeparator { width: parent.width; foreground: root.fg }
 
             // ---- download ----
-            PanelSectionHeader { width: parent.width; text: "ЗАГРУЗКА"; foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
+            PanelSectionHeader { width: parent.width; text: root.t("sec.download"); foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
 
             TextField {
               width: parent.width
               height: Style.spacing.controlHeight
               foreground: root.fg
               accent: root.accent
-              placeholderText: "Папка: ~/Videos/Omaloader"
+              placeholderText: root.t("set.folder")
               verticalPadding: 6
               text: String(root.opt("downloadDir", "") || "")
               onEditingFinished: if (text !== String(root.opt("downloadDir", "") || "")) root.persist({ downloadDir: text.trim() })
@@ -854,8 +875,8 @@ Panel {
 
             Toggle {
               width: parent.width
-              label: "Автовставка ссылки"
-              description: "При открытии подставлять ссылку из буфера обмена. ПКМ по значку вставляет всегда"
+              label: root.t("set.autoPaste")
+              description: root.t("set.autoPasteDesc")
               checked: root.opt("autoPaste", false) === true
               foreground: root.fg
               accent: root.accent
@@ -870,8 +891,8 @@ Panel {
 
               Dropdown {
                 width: (parent.width - parent.spacing) / 2
-                label: "Контейнер видео"
-                options: Model.containerOptions()
+                label: root.t("set.container")
+                options: Model.containerOptions(root.lang)
                 value: String(root.opt("container", "auto"))
                 foreground: root.fg
                 accent: root.accent
@@ -880,7 +901,7 @@ Panel {
               }
               Dropdown {
                 width: (parent.width - parent.spacing) / 2
-                label: "Формат звука"
+                label: root.t("set.audioFormat")
                 options: Model.audioFormatOptions()
                 value: String(root.opt("audioFormat", "m4a"))
                 foreground: root.fg
@@ -892,8 +913,8 @@ Panel {
 
             Dropdown {
               width: parent.width
-              label: "Ограничение скорости"
-              options: Model.rateOptions()
+              label: root.t("set.rate")
+              options: Model.rateOptions(root.lang)
               value: String(root.opt("rate", ""))
               foreground: root.fg
               accent: root.accent
@@ -903,8 +924,8 @@ Panel {
 
             Toggle {
               width: parent.width
-              label: "Ускоренная загрузка"
-              description: "Качать 4 фрагмента параллельно"
+              label: root.t("set.fragments")
+              description: root.t("set.fragmentsDesc")
               checked: root.opt("fragments", true) === true
               foreground: root.fg
               accent: root.accent
@@ -914,8 +935,8 @@ Panel {
             }
             Toggle {
               width: parent.width
-              label: "Плейлист целиком"
-              description: "Если ссылка ведёт на плейлист, скачать все видео (кроме GIF)"
+              label: root.t("set.playlist")
+              description: root.t("set.playlistDesc")
               checked: root.opt("playlist", false) === true
               foreground: root.fg
               accent: root.accent
@@ -927,12 +948,12 @@ Panel {
             PanelSeparator { width: parent.width; foreground: root.fg }
 
             // ---- processing ----
-            PanelSectionHeader { width: parent.width; text: "ОБРАБОТКА"; foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
+            PanelSectionHeader { width: parent.width; text: root.t("sec.processing"); foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
 
             Toggle {
               width: parent.width
-              label: "Обложка в файл"
-              description: "Встроить превью ролика как обложку"
+              label: root.t("set.embedThumb")
+              description: root.t("set.embedThumbDesc")
               checked: root.opt("embedThumb", false) === true
               foreground: root.fg
               accent: root.accent
@@ -942,8 +963,8 @@ Panel {
             }
             Toggle {
               width: parent.width
-              label: "Встроить субтитры"
-              description: "Только для видео: mp4, mkv, webm"
+              label: root.t("set.embedSubs")
+              description: root.t("set.embedSubsDesc")
               checked: root.opt("embedSubs", false) === true
               foreground: root.fg
               accent: root.accent
@@ -958,7 +979,7 @@ Panel {
               visible: root.opt("embedSubs", false) === true
               foreground: root.fg
               accent: root.accent
-              placeholderText: "Языки субтитров: ru,en"
+              placeholderText: root.t("set.subLangs")
               verticalPadding: 6
               text: String(root.opt("subLangs", "ru,en"))
               onEditingFinished: { var t = text.replace(/\s+/g, ""); if (t) root.persist({ subLangs: t }) }
@@ -966,8 +987,8 @@ Panel {
 
             Toggle {
               width: parent.width
-              label: "Вырезать рекламные вставки"
-              description: "SponsorBlock: спонсоры, самореклама, просьбы подписаться. Только YouTube"
+              label: root.t("set.sponsor")
+              description: root.t("set.sponsorDesc")
               checked: root.opt("sponsor", false) === true
               foreground: root.fg
               accent: root.accent
@@ -979,12 +1000,12 @@ Panel {
             PanelSeparator { width: parent.width; foreground: root.fg }
 
             // ---- access ----
-            PanelSectionHeader { width: parent.width; text: "ДОСТУП"; foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
+            PanelSectionHeader { width: parent.width; text: root.t("sec.access"); foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
 
             Dropdown {
               width: parent.width
-              label: "Cookies браузера"
-              options: Model.cookiesOptions()
+              label: root.t("set.cookies")
+              options: Model.cookiesOptions(root.lang)
               value: String(root.opt("cookies", ""))
               foreground: root.fg
               accent: root.accent
@@ -997,18 +1018,18 @@ Panel {
               font.family: root.ff
               font.pixelSize: Style.font.caption
               wrapMode: Text.Wrap
-              text: "Для видео 18+, приватных и для подписчиков: yt-dlp войдёт под вашей сессией из браузера."
+              text: root.t("set.cookiesHint")
             }
 
             PanelSeparator { width: parent.width; foreground: root.fg }
 
             // ---- after download ----
-            PanelSectionHeader { width: parent.width; text: "ПОСЛЕ ЗАГРУЗКИ"; foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
+            PanelSectionHeader { width: parent.width; text: root.t("sec.after"); foreground: root.fg; fontFamily: root.ff; font.letterSpacing: 1.2 }
 
             Toggle {
               width: parent.width
-              label: "Уведомление"
-              description: "Показать уведомление, когда файл готов"
+              label: root.t("set.notify")
+              description: root.t("set.notifyDesc")
               checked: root.opt("notify", true) === true
               foreground: root.fg
               accent: root.accent
@@ -1018,8 +1039,8 @@ Panel {
             }
             Toggle {
               width: parent.width
-              label: "Открыть папку"
-              description: "Открыть папку загрузок после скачивания"
+              label: root.t("set.openAfter")
+              description: root.t("set.openAfterDesc")
               checked: root.opt("openAfter", false) === true
               foreground: root.fg
               accent: root.accent

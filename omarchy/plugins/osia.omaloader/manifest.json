@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "osia.omaloader",
   "name": "Omaloader",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "osia",
   "license": "MIT",
   "description": "Paste a video URL, see a preview, pick picture and sound quality (or convert to GIF), download with yt-dlp + ffmpeg. Settings tab with download options and a plugin-only proxy manager.",
