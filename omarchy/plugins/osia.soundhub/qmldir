@@ -24,3 +24,6 @@ HubSwitch 1.0 HubSwitch.qml
 HubRow 1.0 HubRow.qml
 DesktopWidget 1.0 DesktopWidget.qml
 MiniPlayer 1.0 MiniPlayer.qml
+HubPlacePicker 1.0 HubPlacePicker.qml
+HubField 1.0 HubField.qml
+HubProgress 1.0 HubProgress.qml

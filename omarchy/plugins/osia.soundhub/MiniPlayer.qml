@@ -103,37 +103,19 @@ Item {
         elide: Text.ElideRight
       }
 
-      // pseudo-waveform progress, click to seek
-      Item {
+      // progress in the chosen look, click/drag to seek
+      HubProgress {
         id: wave
         width: parent.width
         height: Style.space(24)
-        readonly property real barW: Style.space(2.5)
-        readonly property real gap: Style.space(2)
-        readonly property int count: Math.max(8, Math.floor((width + gap) / (barW + gap)))
-        readonly property var shape: Model.waveShape(mp.player ? (mp.player.trackTitle || "") + "\u0001" + (mp.player.trackArtist || "") : "", count)
-        Repeater {
-          model: wave.count
-          delegate: Rectangle {
-            required property int index
-            x: index * (wave.barW + wave.gap)
-            width: wave.barW
-            height: Math.max(wave.barW, wave.height * (wave.shape[index] || 0.3))
-            anchors.verticalCenter: parent.verticalCenter
-            radius: width / 2
-            color: (index + 0.5) / wave.count <= mp.progress ? mp.accent : HubStyle.tint(mp.fg, 0.2)
-          }
-        }
-        MouseArea {
-          anchors.fill: parent
-          enabled: mp.canSeek
-          cursorShape: Qt.PointingHandCursor
-          onClicked: function(e) {
-            var t = Math.max(0, Math.min(1, e.x / width)) * mp.length
-            mp.player.position = t
-            mp.pos = t
-          }
-        }
+        progress: mp.progress
+        known: mp.length > 0
+        playing: mp.playing
+        canSeek: mp.canSeek
+        look: mp.host ? String(mp.host.setting("progressStyle", "squiggle")) : "squiggle"
+        seed: mp.player ? (mp.player.trackTitle || "") + "\u0001" + (mp.player.trackArtist || "") : ""
+        fg: mp.fg; accent: mp.accent
+        onSeekTo: function(r) { var t = r * mp.length; mp.player.position = t; mp.pos = t }
       }
 
       Item {

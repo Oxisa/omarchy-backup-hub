@@ -16,6 +16,7 @@ Column {
   readonly property color bgc: host ? host.bgc : "black"
   readonly property string ff: host ? host.ff : ""
   readonly property real selW: Style.space(176)
+  property bool showDesk: true                 // TheNotch shows the widget under Settings → Widgets
 
   function t(k) { return host ? host.t(k) : k }
   function opt(k, d) { return host ? String(host.opt(k, d)) : d }
@@ -84,6 +85,7 @@ Column {
   }
 
   Section {
+    visible: page.showDesk
     title: page.t("set.desk"); icon: "󰍹"
     HubRow {
       title: page.t("set.deskShow"); hint: page.t("set.deskHint"); fg: page.fg; fontFamily: page.ff
@@ -105,34 +107,10 @@ Column {
     HubRow {
       visible: host && host.opt("deskWidget", false) === true
       title: page.t("set.deskPos"); fg: page.fg; fontFamily: page.ff
-      Rectangle {                                       // 3×3 position picker, like a little screen
-        width: Style.space(96); height: Style.space(62)
-        radius: Style.space(8)
-        color: HubStyle.tint(page.fg, HubStyle.control)
-        Grid {
-          anchors.centerIn: parent
-          columns: 3
-          spacing: Style.space(4)
-          Repeater {
-            model: ["tl", "t", "tr", "l", "c", "r", "bl", "b", "br"]
-            delegate: Rectangle {
-              id: cell
-              required property string modelData
-              readonly property bool on: page.opt("deskPos", "br") === modelData
-              width: Style.space(26); height: Style.space(16)
-              radius: Style.space(4)
-              color: on ? page.accent : HubStyle.tint(page.fg, cellMouse.containsMouse ? 0.22 : 0.10)
-              Behavior on color { ColorAnimation { duration: HubStyle.anim } }
-              MouseArea {
-                id: cellMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: host.persist({ deskPos: cell.modelData })
-              }
-            }
-          }
-        }
+      HubPlacePicker {
+        value: page.opt("deskPos", "br")
+        fg: page.fg; accent: page.accent
+        onPicked: function(p) { host.persist({ deskPos: p }) }
       }
     }
     HubRow {
@@ -186,6 +164,14 @@ Column {
 
   Section {
     title: page.t("set.spectrum"); icon: "󰎈"
+    HubRow {
+      title: page.t("set.progress"); fg: page.fg; fontFamily: page.ff
+      Select {
+        options: ["squiggle", "wave", "line"].map(function(k) { return { value: k, label: page.t("prog." + k) } })
+        value: page.opt("progressStyle", "squiggle")
+        onChanged: function(v) { host.persist({ progressStyle: v }) }
+      }
+    }
     HubRow {
       title: page.t("set.panelSpectrum"); fg: page.fg; fontFamily: page.ff
       Select {

@@ -38,8 +38,8 @@ Column {
                                       && !!player.lengthSupported && liveLength > 0
   onLiveCanSeekChanged: if (liveCanSeek) seekWorked = true
   readonly property bool canSeek: player !== null && (liveCanSeek || (seekWorked && knownLength > 0))
-  property bool seeking: false
-  property real seekRatio: 0
+  readonly property bool seeking: track.dragging
+  readonly property real seekRatio: track.dragRatio
   property real position: player ? player.position : 0
   readonly property real length: liveLength > 0 ? liveLength : knownLength
 
@@ -222,55 +222,29 @@ Column {
     }
   }
 
-  // ---- seek: a per-track pseudo-waveform, played part filled ----
+  // ---- seek: progress in the chosen look (squiggle / wave / line) ----
   Item {
     visible: page.hasTrack
     width: parent.width
     height: Style.space(56)
 
-    Item {
+    HubProgress {
       id: track
       anchors.left: parent.left; anchors.right: parent.right
       anchors.top: parent.top
       height: Style.space(34)
-
-      readonly property real barW: Style.space(3)
-      readonly property real gap: Style.space(2)
-      readonly property int count: Math.max(8, Math.floor((width + gap) / (barW + gap)))
-      readonly property var shape: Model.waveShape(page.trackId, count)
-
-      Repeater {
-        model: track.count
-        delegate: Rectangle {
-          required property int index
-          readonly property real h: track.shape[index] || 0.3
-          x: index * (track.barW + track.gap)
-          width: track.barW
-          height: Math.max(track.barW, track.height * h)
-          anchors.verticalCenter: parent.verticalCenter
-          radius: width / 2
-          color: (index + 0.5) / track.count <= page.progress ? page.accent
-               : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, page.canSeek ? 0.22 : 0.12)
-        }
-      }
-    }
-    MouseArea {
-      id: seekMouse
-      anchors.fill: track
-      enabled: page.canSeek
-      hoverEnabled: true
-      cursorShape: page.canSeek ? Qt.PointingHandCursor : Qt.ArrowCursor
-      function ratioAt(x) { return Math.max(0, Math.min(1, x / track.width)) }
-      onPressed: function(e) { page.seeking = true; page.seekRatio = ratioAt(e.x) }
-      onPositionChanged: function(e) { if (page.seeking) page.seekRatio = ratioAt(e.x) }
-      onReleased: {
-        if (page.player && page.canSeek) page.seekTo(page.seekRatio * page.length)
-        page.seeking = false
-      }
+      progress: page.progress
+      known: page.length > 0
+      playing: page.playing
+      canSeek: page.canSeek
+      look: host ? String(host.opt("progressStyle", "squiggle")) : "squiggle"
+      seed: page.trackId
+      fg: page.fg; accent: page.accent
+      onSeekTo: function(r) { if (page.player && page.canSeek) page.seekTo(r * page.length) }
     }
     Text {
       anchors.left: parent.left; anchors.bottom: parent.bottom
-      text: Model.fmtTime(page.seeking ? page.seekRatio * page.length : page.position)
+      text: Model.fmtTime(track.dragging ? track.dragRatio * page.length : page.position)
       color: Qt.darker(page.fg, 1.5)
       font.family: page.ff; font.pixelSize: Style.font.caption
     }

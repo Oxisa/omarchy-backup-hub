@@ -103,8 +103,10 @@ Item {
           id: opt
           required property var modelData
           readonly property bool current: root.optionValue(modelData) === root.value
+          // "__sep__" options are group captions, not choices
+          readonly property bool separator: root.optionValue(modelData).indexOf("__sep") === 0
           width: list.width
-          height: Style.space(32)
+          height: separator ? Style.space(24) : Style.space(32)
           radius: HubStyle.radiusSmall
           color: current ? HubStyle.tint(root.accent, 0.18)
                : optMouse.containsMouse ? HubStyle.tint(root.foreground, 0.08) : "transparent"
@@ -112,9 +114,12 @@ Item {
             anchors.left: parent.left; anchors.leftMargin: Style.space(12)
             anchors.right: check.left; anchors.rightMargin: Style.space(6)
             anchors.verticalCenter: parent.verticalCenter
-            text: root.optionLabel(opt.modelData)
-            color: opt.current ? root.accent : root.foreground
-            font.family: root.fontFamily; font.pixelSize: Style.font.caption + 1; font.bold: opt.current
+            text: opt.separator ? root.optionLabel(opt.modelData).replace(/[─—-]+/g, "").trim() : root.optionLabel(opt.modelData)
+            color: opt.separator ? Qt.darker(root.foreground, 1.7) : opt.current ? root.accent : root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: opt.separator ? Style.font.caption - 1 : Style.font.caption + 1
+            font.bold: opt.current || opt.separator
+            font.letterSpacing: opt.separator ? 1.3 : 0
             elide: Text.ElideRight
           }
           Text {
@@ -129,6 +134,7 @@ Item {
           MouseArea {
             id: optMouse
             anchors.fill: parent
+            enabled: !opt.separator
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: {

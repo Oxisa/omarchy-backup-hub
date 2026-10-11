@@ -100,7 +100,19 @@ BarWidget {
   readonly property string deskScreen: String(setting("deskScreen", "")) || (Quickshell.screens.length ? Quickshell.screens[0].name : "")
   // Layer-shell anchors don't re-apply on a live surface, so a new position
   // means a new window: Variants rebuilds it whenever the place changes.
-  readonly property bool deskOn: setting("deskWidget", false) === true && myScreen !== null && myScreen.name === deskScreen
+  // TheNotch can host this widget itself; then the bar's copy stays off
+  FileView {
+    id: notchWidgets
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/thenotch-widgets.json"
+    watchChanges: true
+    printErrors: false
+    property bool nowplaying: false
+    onLoaded: { try { nowplaying = JSON.parse(text()).nowplaying === true } catch (e) { nowplaying = false } }
+    onLoadFailed: nowplaying = false
+    onFileChanged: reload()
+  }
+  readonly property bool deskOn: setting("deskWidget", false) === true && !notchWidgets.nowplaying
+                                 && myScreen !== null && myScreen.name === deskScreen
   Variants {
     model: root.deskOn ? [String(root.setting("deskPos", "br"))] : []
     delegate: DesktopWidget {
