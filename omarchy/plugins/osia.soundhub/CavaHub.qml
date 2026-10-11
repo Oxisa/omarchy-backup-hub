@@ -19,6 +19,11 @@ Item {
   visible: false
 
   property var demands: ({})
+  // One track-change notice per track, not one per bar (there is a bar on
+  // every monitor): the first bar to see a new track claims it here.
+  property string lastNoticeTrack: ""
+  function claimNotice(sig) { if (!sig || sig === lastNoticeTrack) return false; lastNoticeTrack = sig; return true }
+
   readonly property bool active: Object.keys(demands).length > 0
   function want(key, on) {
     var d = Object.assign({}, demands)

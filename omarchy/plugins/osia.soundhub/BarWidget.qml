@@ -157,6 +157,7 @@ BarWidget {
     var first = lastTrack === ""
     lastTrack = trackSig
     if (first || !playing || setting("notify", false) !== true) return
+    if (!CavaHub.claimNotice(trackSig)) return          // another monitor's bar already sent it
     Quickshell.execDetached(["omarchy-notification-send", "-g", "󰝚",
                              player.trackTitle || "", player.trackArtist || ""])
   }
