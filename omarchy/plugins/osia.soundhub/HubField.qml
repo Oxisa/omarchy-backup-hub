@@ -16,6 +16,7 @@ Rectangle {
   signal accepted()
   signal editingFinished()
   signal textEdited()                // typed by the user (not set from code)
+  signal shiftAccepted()             // Shift+Enter
   function forceActiveFocus() { input.forceActiveFocus() }
   function selectAll() { input.selectAll() }
 
@@ -49,6 +50,9 @@ Rectangle {
     font.family: field.fontFamily; font.pixelSize: Style.font.caption + 1
     onAccepted: { field.accepted(); field.editingFinished() }
     onTextEdited: field.textEdited()
+    Keys.onReturnPressed: function(e) {
+      if (e.modifiers & Qt.ShiftModifier) { field.shiftAccepted(); e.accepted = true } else e.accepted = false
+    }
     onActiveFocusChanged: if (!activeFocus) field.editingFinished()
     Text {
       visible: !input.text && !input.activeFocus

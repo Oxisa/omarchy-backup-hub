@@ -1,0 +1,662 @@
+[
+ {
+  "book": "GEN",
+  "chapter": 1,
+  "verse": 1,
+  "en": "In the beginning God created the heavens and the earth.",
+  "ru": "В начале сотворил Бог небо и землю.",
+  "ref": {
+   "en": "Genesis 1:1",
+   "ru": "Бытие 1:1"
+  }
+ },
+ {
+  "book": "GEN",
+  "chapter": 28,
+  "verse": 15,
+  "en": "Look, I am with you, and I will watch over you wherever you go, and I will bring you back to this land. For I will not leave you until I have done what I have promised you.",
+  "ru": "И вот Я с тобою, и сохраню тебя везде, куда ты ни пойдешь; и возвращу тебя в сию землю, ибо Я не оставлю тебя, доколе не исполню того, что Я сказал тебе.",
+  "ref": {
+   "en": "Genesis 28:15",
+   "ru": "Бытие 28:15"
+  }
+ },
+ {
+  "book": "EXO",
+  "chapter": 14,
+  "verse": 14,
+  "en": "The LORD will fight for you; you need only to be still.",
+  "ru": "Господь будет поборать за вас, а вы будьте спокойны.",
+  "ref": {
+   "en": "Exodus 14:14",
+   "ru": "Исход 14:14"
+  }
+ },
+ {
+  "book": "DEU",
+  "chapter": 31,
+  "verse": 6,
+  "en": "Be strong and courageous; do not be afraid or terrified of them, for it is the LORD your God who goes with you; He will never leave you nor forsake you.",
+  "ru": "Будьте тверды и мужественны, не бойтесь, не ужасайтесь и не страшитесь их, ибо Господь Бог твой Сам пойдет с тобою и не отступит от тебя и не оставит тебя.",
+  "ref": {
+   "en": "Deuteronomy 31:6",
+   "ru": "Второзаконие 31:6"
+  }
+ },
+ {
+  "book": "JOS",
+  "chapter": 1,
+  "verse": 9,
+  "en": "Have I not commanded you to be strong and courageous? Do not be afraid; do not be discouraged, for the LORD your God is with you wherever you go.",
+  "ru": "Вот Я повелеваю тебе: будь тверд и мужествен, не страшись и не ужасайся; ибо с тобою Господь Бог твой везде, куда ни пойдешь.",
+  "ref": {
+   "en": "Joshua 1:9",
+   "ru": "Иисус Навин 1:9"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 1,
+  "verse": 1,
+  "en": "Blessed is the man who does not walk in the counsel of the wicked, or set foot on the path of sinners, or sit in the seat of mockers.",
+  "ru": "Блажен муж, который не ходит на совет нечестивых и не стоит на пути грешных и не сидит в собрании развратителей.",
+  "ref": {
+   "en": "Psalm 1:1",
+   "ru": "Псалом 1:1"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 19,
+  "verse": 1,
+  "en": "The heavens declare the glory of God; the skies proclaim the work of His hands.",
+  "ru": "Небеса проповедуют славу Божию, и о делах рук Его вещает твердь.",
+  "ref": {
+   "en": "Psalm 19:1",
+   "ru": "Псалом 18:2"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 23,
+  "verse": 1,
+  "en": "The LORD is my shepherd; I shall not want.",
+  "ru": "Господь — Пастырь мой; я ни в чем не буду нуждаться.",
+  "ref": {
+   "en": "Psalm 23:1",
+   "ru": "Псалом 22:1"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 23,
+  "verse": 4,
+  "en": "Even though I walk through the valley of the shadow of death, I will fear no evil, for You are with me; Your rod and Your staff, they comfort me.",
+  "ru": "Если я пойду и долиною смертной тени, не убоюсь зла, потому что Ты со мной; Твой жезл и Твой посох — они успокаивают меня.",
+  "ref": {
+   "en": "Psalm 23:4",
+   "ru": "Псалом 22:4"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 27,
+  "verse": 1,
+  "en": "The LORD is my light and my salvation— whom shall I fear? The LORD is the stronghold of my life— whom shall I dread?",
+  "ru": "Господь — свет мой и спасение мое: кого мне бояться? Господь крепость жизни моей: кого мне страшиться?",
+  "ref": {
+   "en": "Psalm 27:1",
+   "ru": "Псалом 26:1"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 34,
+  "verse": 8,
+  "en": "Taste and see that the LORD is good; blessed is the man who takes refuge in Him!",
+  "ru": "Вкусите, и увидите, как благ Господь! Блажен человек, который уповает на Него!",
+  "ref": {
+   "en": "Psalm 34:8",
+   "ru": "Псалом 33:9"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 37,
+  "verse": 4,
+  "en": "Delight yourself in the LORD, and He will give you the desires of your heart.",
+  "ru": "Утешайся Господом, и Он исполнит желания сердца твоего.",
+  "ref": {
+   "en": "Psalm 37:4",
+   "ru": "Псалом 36:4"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 46,
+  "verse": 1,
+  "en": "God is our refuge and strength, an ever-present help in times of trouble.",
+  "ru": "Бог нам прибежище и сила, скорый помощник в бедах.",
+  "ref": {
+   "en": "Psalm 46:1",
+   "ru": "Псалом 45:2"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 51,
+  "verse": 10,
+  "en": "Create in me a clean heart, O God, and renew a right spirit within me.",
+  "ru": "Сердце чистое сотвори во мне, Боже, и дух правый обнови внутри меня.",
+  "ref": {
+   "en": "Psalm 51:10",
+   "ru": "Псалом 50:12"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 56,
+  "verse": 3,
+  "en": "When I am afraid, I put my trust in You.",
+  "ru": "Когда я в страхе, на Тебя я уповаю.",
+  "ref": {
+   "en": "Psalm 56:3",
+   "ru": "Псалом 55:4"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 91,
+  "verse": 1,
+  "en": "He who dwells in the shelter of the Most High will abide in the shadow of the Almighty.",
+  "ru": "Живущий под кровом Всевышнего под сенью Всемогущего покоится.",
+  "ref": {
+   "en": "Psalm 91:1",
+   "ru": "Псалом 90:1"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 103,
+  "verse": 8,
+  "en": "The LORD is compassionate and gracious, slow to anger, abounding in loving devotion.",
+  "ru": "Щедр и милостив Господь, долготерпелив и многомилостив.",
+  "ref": {
+   "en": "Psalm 103:8",
+   "ru": "Псалом 102:8"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 119,
+  "verse": 105,
+  "en": "Your word is a lamp to my feet and a light to my path.",
+  "ru": "Слово Твое — светильник ноге моей и свет стезе моей.",
+  "ref": {
+   "en": "Psalm 119:105",
+   "ru": "Псалом 118:105"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 121,
+  "verse": 1,
+  "en": "I lift up my eyes to the hills. From where does my help come?",
+  "ru": "Возвожу очи мои к горам, откуда придет помощь моя.",
+  "ref": {
+   "en": "Psalm 121:1",
+   "ru": "Псалом 120:1"
+  }
+ },
+ {
+  "book": "PSA",
+  "chapter": 139,
+  "verse": 14,
+  "en": "I praise You, for I am fearfully and wonderfully made. Marvelous are Your works, and I know this very well.",
+  "ru": "Славлю Тебя, потому что я дивно устроен. Дивны дела Твои, и душа моя вполне сознает это.",
+  "ref": {
+   "en": "Psalm 139:14",
+   "ru": "Псалом 138:14"
+  }
+ },
+ {
+  "book": "PRO",
+  "chapter": 3,
+  "verse": 5,
+  "en": "Trust in the LORD with all your heart, and lean not on your own understanding.",
+  "ru": "Надейся на Господа всем сердцем твоим, и не полагайся на разум твой.",
+  "ref": {
+   "en": "Proverbs 3:5",
+   "ru": "Притчи 3:5"
+  }
+ },
+ {
+  "book": "PRO",
+  "chapter": 3,
+  "verse": 6,
+  "en": "In all your ways acknowledge Him, and He will make your paths straight.",
+  "ru": "Во всех путях твоих познавай Его, и Он направит стези твои.",
+  "ref": {
+   "en": "Proverbs 3:6",
+   "ru": "Притчи 3:6"
+  }
+ },
+ {
+  "book": "ISA",
+  "chapter": 9,
+  "verse": 6,
+  "en": "For unto us a child is born, unto us a son is given, and the government will be upon His shoulders. And He will be called Wonderful Counselor, Mighty God, Everlasting Father, Prince of Peace.",
+  "ru": "Ибо младенец родился нам — Сын дан нам; владычество на раменах Его, и нарекут имя Ему: Чудный, Советник, Бог крепкий, Отец вечности, Князь мира.",
+  "ref": {
+   "en": "Isaiah 9:6",
+   "ru": "Исаия 9:6"
+  }
+ },
+ {
+  "book": "ISA",
+  "chapter": 40,
+  "verse": 31,
+  "en": "But those who wait upon the LORD will renew their strength; they will mount up with wings like eagles; they will run and not grow weary, they will walk and not faint.",
+  "ru": "А надеющиеся на Господа обновятся в силе: поднимут крылья, как орлы, потекут — и не устанут, пойдут — и не утомятся.",
+  "ref": {
+   "en": "Isaiah 40:31",
+   "ru": "Исаия 40:31"
+  }
+ },
+ {
+  "book": "ISA",
+  "chapter": 41,
+  "verse": 10,
+  "en": "Do not fear, for I am with you; do not be afraid, for I am your God. I will strengthen you; I will surely help you; I will uphold you with My righteous right hand.",
+  "ru": "Не бойся, ибо Я с тобою; не смущайся, ибо Я Бог твой; Я укреплю тебя, и помогу тебе, и поддержу тебя десницею правды Моей.",
+  "ref": {
+   "en": "Isaiah 41:10",
+   "ru": "Исаия 41:10"
+  }
+ },
+ {
+  "book": "ISA",
+  "chapter": 53,
+  "verse": 5,
+  "en": "But He was pierced for our transgressions, He was crushed for our iniquities; the punishment that brought us peace was upon Him, and by His stripes we are healed.",
+  "ru": "Но Он изъязвлен был за грехи наши и мучим за беззакония наши; наказание мира нашего было на Нем, и ранами Его мы исцелились.",
+  "ref": {
+   "en": "Isaiah 53:5",
+   "ru": "Исаия 53:5"
+  }
+ },
+ {
+  "book": "ISA",
+  "chapter": 55,
+  "verse": 8,
+  "en": "“For My thoughts are not your thoughts, neither are your ways My ways,” declares the LORD.",
+  "ru": "Мои мысли — не ваши мысли, ни ваши пути — пути Мои, говорит Господь.",
+  "ref": {
+   "en": "Isaiah 55:8",
+   "ru": "Исаия 55:8"
+  }
+ },
+ {
+  "book": "JER",
+  "chapter": 29,
+  "verse": 11,
+  "en": "For I know the plans I have for you, declares the LORD, plans to prosper you and not to harm you, to give you a future and a hope.",
+  "ru": "Ибо только Я знаю намерения, какие имею о вас, говорит Господь, намерения во благо, а не на зло, чтобы дать вам будущность и надежду.",
+  "ref": {
+   "en": "Jeremiah 29:11",
+   "ru": "Иеремия 29:11"
+  }
+ },
+ {
+  "book": "LAM",
+  "chapter": 3,
+  "verse": 22,
+  "en": "Because of the loving devotion of the LORD we are not consumed, for His mercies never fail.",
+  "ru": "По милости Господа мы не исчезли, ибо милосердие Его не истощилось.",
+  "ref": {
+   "en": "Lamentations 3:22",
+   "ru": "Плач Иеремии 3:22"
+  }
+ },
+ {
+  "book": "MIC",
+  "chapter": 6,
+  "verse": 8,
+  "en": "He has shown you, O man, what is good. And what does the LORD require of you but to act justly, to love mercy, and to walk humbly with your God?",
+  "ru": "О, человек! сказано тебе, что — добро и чего требует от тебя Господь: действовать справедливо, любить дела милосердия и смиренномудренно ходить пред Богом твоим.",
+  "ref": {
+   "en": "Micah 6:8",
+   "ru": "Михей 6:8"
+  }
+ },
+ {
+  "book": "HAB",
+  "chapter": 3,
+  "verse": 19,
+  "en": "GOD the Lord is my strength; He makes my feet like those of a deer; He makes me walk upon the heights! For the choirmaster. With stringed instruments.",
+  "ru": "Господь Бог — сила моя: Он сделает ноги мои как у оленя и на высоты мои возведет меня! (Начальнику хора.)",
+  "ref": {
+   "en": "Habakkuk 3:19",
+   "ru": "Аввакум 3:19"
+  }
+ },
+ {
+  "book": "ZEP",
+  "chapter": 3,
+  "verse": 17,
+  "en": "The LORD your God is among you; He is mighty to save. He will rejoice over you with gladness; He will quiet you with His love; He will rejoice over you with singing.",
+  "ru": "Господь Бог твой среди тебя, Он силен спасти тебя; возвеселится о тебе радостью, будет милостив по любви Своей, будет торжествовать о тебе с ликованием.",
+  "ref": {
+   "en": "Zephaniah 3:17",
+   "ru": "Софония 3:17"
+  }
+ },
+ {
+  "book": "MAT",
+  "chapter": 5,
+  "verse": 3,
+  "en": "Blessed are the poor in spirit, for theirs is the kingdom of heaven.",
+  "ru": "Блаженны нищие духом, ибо их есть Царство Небесное.",
+  "ref": {
+   "en": "Matthew 5:3",
+   "ru": "Матфей 5:3"
+  }
+ },
+ {
+  "book": "MAT",
+  "chapter": 5,
+  "verse": 16,
+  "en": "In the same way, let your light shine before men, that they may see your good deeds and glorify your Father in heaven.",
+  "ru": "Так да светит свет ваш пред людьми, чтобы они видели ваши добрые дела и прославляли Отца вашего Небесного.",
+  "ref": {
+   "en": "Matthew 5:16",
+   "ru": "Матфей 5:16"
+  }
+ },
+ {
+  "book": "MAT",
+  "chapter": 6,
+  "verse": 33,
+  "en": "But seek first the kingdom of God and His righteousness, and all these things will be added unto you.",
+  "ru": "Ищите же прежде Царства Божия и правды Его, и это все приложится вам.",
+  "ref": {
+   "en": "Matthew 6:33",
+   "ru": "Матфей 6:33"
+  }
+ },
+ {
+  "book": "MAT",
+  "chapter": 11,
+  "verse": 28,
+  "en": "Come to Me, all you who are weary and burdened, and I will give you rest.",
+  "ru": "Придите ко Мне все труждающиеся и обремененные, и Я успокою вас.",
+  "ref": {
+   "en": "Matthew 11:28",
+   "ru": "Матфей 11:28"
+  }
+ },
+ {
+  "book": "MAT",
+  "chapter": 28,
+  "verse": 19,
+  "en": "Therefore go and make disciples of all nations, baptizing them in the name of the Father and of the Son and of the Holy Spirit.",
+  "ru": "Итак идите, научите все народы, крестя их во имя Отца и Сына и Святаго Духа.",
+  "ref": {
+   "en": "Matthew 28:19",
+   "ru": "Матфей 28:19"
+  }
+ },
+ {
+  "book": "MRK",
+  "chapter": 10,
+  "verse": 27,
+  "en": "Jesus looked at them and said, “With man this is impossible, but not with God. For all things are possible with God.”",
+  "ru": "Иисус, воззрев на них, говорит: человекам это невозможно, но не Богу, ибо все возможно Богу.",
+  "ref": {
+   "en": "Mark 10:27",
+   "ru": "Марк 10:27"
+  }
+ },
+ {
+  "book": "LUK",
+  "chapter": 15,
+  "verse": 20,
+  "en": "So he got up and went to his father. But while he was still in the distance, his father saw him and was filled with compassion. He ran to his son, embraced him, and kissed him.",
+  "ru": "Встал и пошел к отцу своему. И когда он был еще далеко, увидел его отец его и сжалился; и, побежав, пал ему на шею и целовал его.",
+  "ref": {
+   "en": "Luke 15:20",
+   "ru": "Лука 15:20"
+  }
+ },
+ {
+  "book": "JHN",
+  "chapter": 1,
+  "verse": 1,
+  "en": "In the beginning was the Word, and the Word was with God, and the Word was God.",
+  "ru": "В начале было Слово, и Слово было у Бога, и Слово было Бог.",
+  "ref": {
+   "en": "John 1:1",
+   "ru": "Иоанн 1:1"
+  }
+ },
+ {
+  "book": "JHN",
+  "chapter": 3,
+  "verse": 16,
+  "en": "For God so loved the world that He gave His one and only Son, that everyone who believes in Him shall not perish but have eternal life.",
+  "ru": "Ибо так возлюбил Бог мир, что отдал Сына Своего Единородного, дабы всякий, верующий в Него, не погиб, но имел жизнь вечную.",
+  "ref": {
+   "en": "John 3:16",
+   "ru": "Иоанн 3:16"
+  }
+ },
+ {
+  "book": "JHN",
+  "chapter": 8,
+  "verse": 12,
+  "en": "Once again, Jesus spoke to the people and said, “I am the light of the world. Whoever follows Me will never walk in the darkness, but will have the light of life.”",
+  "ru": "Опять говорил Иисус к народу и сказал им: Я свет миру; кто последует за Мною, тот не будет ходить во тьме, но будет иметь свет жизни.",
+  "ref": {
+   "en": "John 8:12",
+   "ru": "Иоанн 8:12"
+  }
+ },
+ {
+  "book": "JHN",
+  "chapter": 10,
+  "verse": 11,
+  "en": "I am the good shepherd. The good shepherd lays down His life for the sheep.",
+  "ru": "Я есмь пастырь добрый: пастырь добрый полагает жизнь свою за овец.",
+  "ref": {
+   "en": "John 10:11",
+   "ru": "Иоанн 10:11"
+  }
+ },
+ {
+  "book": "JHN",
+  "chapter": 14,
+  "verse": 6,
+  "en": "Jesus answered, “I am the way and the truth and the life. No one comes to the Father except through Me.",
+  "ru": "Иисус сказал ему: Я есмь путь, и истина, и жизнь; никто не приходит к Отцу, как только через Меня.",
+  "ref": {
+   "en": "John 14:6",
+   "ru": "Иоанн 14:6"
+  }
+ },
+ {
+  "book": "JHN",
+  "chapter": 15,
+  "verse": 5,
+  "en": "I am the vine and you are the branches. The one who remains in Me, and I in him, will bear much fruit. For apart from Me you can do nothing.",
+  "ru": "Я есмь лоза, а вы ветви; кто пребывает во Мне, и Я в нем, тот приносит много плода; ибо без Меня не можете делать ничего.",
+  "ref": {
+   "en": "John 15:5",
+   "ru": "Иоанн 15:5"
+  }
+ },
+ {
+  "book": "ACT",
+  "chapter": 1,
+  "verse": 8,
+  "en": "But you will receive power when the Holy Spirit comes upon you, and you will be My witnesses in Jerusalem, and in all Judea and Samaria, and to the ends of the earth.",
+  "ru": "Но вы примете силу, когда сойдет на вас Дух Святый; и будете Мне свидетелями в Иерусалиме, и во всей Иудее, и Самарии, и даже до края земли.",
+  "ref": {
+   "en": "Acts 1:8",
+   "ru": "Деяния 1:8"
+  }
+ },
+ {
+  "book": "ROM",
+  "chapter": 1,
+  "verse": 16,
+  "en": "I am not ashamed of the gospel, because it is the power of God for salvation to everyone who believes, first to the Jew, then to the Greek.",
+  "ru": "Ибо я не стыжусь благовествования Христова, потому что оно есть сила Божия ко спасению всякому верующему, во-первых, Иудею, потом и Еллину.",
+  "ref": {
+   "en": "Romans 1:16",
+   "ru": "Римлянам 1:16"
+  }
+ },
+ {
+  "book": "ROM",
+  "chapter": 5,
+  "verse": 8,
+  "en": "But God proves His love for us in this: While we were still sinners, Christ died for us.",
+  "ru": "Но Бог Свою любовь к нам доказывает тем, что Христос умер за нас, когда мы были еще грешниками.",
+  "ref": {
+   "en": "Romans 5:8",
+   "ru": "Римлянам 5:8"
+  }
+ },
+ {
+  "book": "ROM",
+  "chapter": 8,
+  "verse": 1,
+  "en": "Therefore, there is now no condemnation for those who are in Christ Jesus.",
+  "ru": "Итак нет ныне никакого осуждения тем, которые во Христе Иисусе живут не по плоти, но по духу.",
+  "ref": {
+   "en": "Romans 8:1",
+   "ru": "Римлянам 8:1"
+  }
+ },
+ {
+  "book": "ROM",
+  "chapter": 8,
+  "verse": 28,
+  "en": "And we know that God works all things together for the good of those who love Him, who are called according to His purpose.",
+  "ru": "Притом знаем, что любящим Бога, призванным по Его изволению, все содействует ко благу.",
+  "ref": {
+   "en": "Romans 8:28",
+   "ru": "Римлянам 8:28"
+  }
+ },
+ {
+  "book": "ROM",
+  "chapter": 8,
+  "verse": 38,
+  "en": "For I am convinced that neither death nor life, neither angels nor principalities, neither the present nor the future, nor any powers.",
+  "ru": "Ибо я уверен, что ни смерть, ни жизнь, ни Ангелы, ни Начала, ни Силы, ни настоящее, ни будущее.",
+  "ref": {
+   "en": "Romans 8:38",
+   "ru": "Римлянам 8:38"
+  }
+ },
+ {
+  "book": "ROM",
+  "chapter": 12,
+  "verse": 2,
+  "en": "Do not be conformed to this world, but be transformed by the renewing of your mind. Then you will be able to test and approve what is the good, pleasing, and perfect will of God.",
+  "ru": "И не сообразуйтесь с веком сим, но преобразуйтесь обновлением ума вашего, чтобы вам познавать, что есть воля Божия, благая, угодная и совершенная.",
+  "ref": {
+   "en": "Romans 12:2",
+   "ru": "Римлянам 12:2"
+  }
+ },
+ {
+  "book": "ROM",
+  "chapter": 15,
+  "verse": 13,
+  "en": "Now may the God of hope fill you with all joy and peace as you believe in Him, so that you may overflow with hope by the power of the Holy Spirit.",
+  "ru": "Бог же надежды да исполнит вас всякой радости и мира в вере, дабы вы, силою Духа Святаго, обогатились надеждою.",
+  "ref": {
+   "en": "Romans 15:13",
+   "ru": "Римлянам 15:13"
+  }
+ },
+ {
+  "book": "1CO",
+  "chapter": 13,
+  "verse": 4,
+  "en": "Love is patient, love is kind. It does not envy, it does not boast, it is not proud.",
+  "ru": "Любовь долготерпит, милосердствует, любовь не завидует, любовь не превозносится, не гордится.",
+  "ref": {
+   "en": "1 Corinthians 13:4",
+   "ru": "1 Коринфянам 13:4"
+  }
+ },
+ {
+  "book": "1CO",
+  "chapter": 15,
+  "verse": 58,
+  "en": "Therefore, my beloved brothers, be steadfast and immovable. Always excel in the work of the Lord, because you know that your labor in the Lord is not in vain.",
+  "ru": "Итак, братия мои возлюбленные, будьте тверды, непоколебимы, всегда преуспевайте в деле Господнем, зная, что труд ваш не тщетен пред Господом.",
+  "ref": {
+   "en": "1 Corinthians 15:58",
+   "ru": "1 Коринфянам 15:58"
+  }
+ },
+ {
+  "book": "GAL",
+  "chapter": 5,
+  "verse": 22,
+  "en": "But the fruit of the Spirit is love, joy, peace, patience, kindness, goodness, faithfulness.",
+  "ru": "Плод же духа: любовь, радость, мир, долготерпение, благость, милосердие, вера.",
+  "ref": {
+   "en": "Galatians 5:22",
+   "ru": "Галатам 5:22"
+  }
+ },
+ {
+  "book": "EPH",
+  "chapter": 2,
+  "verse": 8,
+  "en": "For it is by grace you have been saved through faith, and this not from yourselves; it is the gift of God.",
+  "ru": "Ибо благодатью вы спасены через веру, и сие не от вас, Божий дар.",
+  "ref": {
+   "en": "Ephesians 2:8",
+   "ru": "Ефесянам 2:8"
+  }
+ },
+ {
+  "book": "PHP",
+  "chapter": 4,
+  "verse": 13,
+  "en": "I can do all things through Christ who gives me strength.",
+  "ru": "Все могу в укрепляющем меня Иисусе Христе.",
+  "ref": {
+   "en": "Philippians 4:13",
+   "ru": "Филиппийцам 4:13"
+  }
+ },
+ {
+  "book": "HEB",
+  "chapter": 11,
+  "verse": 1,
+  "en": "Now faith is the assurance of what we hope for and the certainty of what we do not see.",
+  "ru": "Вера же есть осуществление ожидаемого и уверенность в невидимом.",
+  "ref": {
+   "en": "Hebrews 11:1",
+   "ru": "Евреям 11:1"
+  }
+ },
+ {
+  "book": "HEB",
+  "chapter": 12,
+  "verse": 1,
+  "en": "Therefore, since we are surrounded by such a great cloud of witnesses, let us throw off every encumbrance and the sin that so easily entangles, and let us run with endurance the race set out for us.",
+  "ru": "Посему и мы, имея вокруг себя такое облако свидетелей, свергнем с себя всякое бремя и запинающий нас грех, и с терпением будем проходить предстоящее нам поприще.",
+  "ref": {
+   "en": "Hebrews 12:1",
+   "ru": "Евреям 12:1"
+  }
+ }
+]

@@ -12,7 +12,9 @@ A quote is {"text", "lang", "author", "tr": {lang: translation}, "source",
 
 A new quote is either from the bundled multilingual set (quotes.json: English,
 Japanese, Latin, French, German, Chinese… with hand-made en/ru translations)
-or from a site — ZenQuotes (quote of the day once a day, and random) or
+or a Bible verse (verses.json: a short list of well-known verses, English BSB
+with the Russian Synodal text, both bundled; on when "bible" is among
+"sources" in settings.json — "sayings" are the quotes), or from a site — ZenQuotes (quote of the day once a day, and random) or
 DummyJSON (random, religious authors skipped), both English — machine-
 translated (MyMemory, then Google). Translations are cached; fetched quotes
 join a local pool used offline. Recent quotes are not repeated.
@@ -31,9 +33,11 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
 BUNDLED = HERE / "quotes.json"
+VERSES = HERE / "verses.json"
 STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "omarchy/dailyquote"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "dailyquote"
 CURRENT = STATE / "current.json"
+SETTINGS = STATE / "settings.json"
 POOL = CACHE / "pool.json"
 POOL_MAX = 2000
 RECENT_MAX = 40
@@ -184,8 +188,26 @@ def pick_offline(recent: set):
     return q
 
 
+def sources() -> set:
+    cfg = load(SETTINGS, {})
+    src = set(cfg.get("sources") or ["sayings"]) if isinstance(cfg, dict) else {"sayings"}
+    return src & {"sayings", "bible"} or {"sayings"}
+
+
+def pick_verse(recent: set):
+    items = [v for v in load(VERSES, []) if v.get("en")]
+    fresh = [v for v in items if key({"text": v["en"]}) not in recent] or items
+    if not fresh:
+        return None
+    v = random.choice(fresh)
+    return {"text": v["en"], "lang": "en", "author": v["ref"]["en"], "author_tr": dict(v["ref"]),
+            "tr": {"ru": v["ru"]}, "source": "Bible", "ref": {"book": v["book"], "chapter": v["chapter"], "verse": v["verse"]}}
+
+
 def ensure_translation(q: dict, lang: str) -> dict:
     """Make sure q has a translation into lang (unless it is in lang already)."""
+    if q.get("author_tr"):                              # a verse: its reference in this language
+        q["author"] = q["author_tr"].get(lang) or q["author"]
     if lang == q.get("lang") or q["tr"].get(lang):
         return q
     for other in all_offline():                         # known from the set or the pool?
@@ -200,9 +222,14 @@ def ensure_translation(q: dict, lang: str) -> dict:
 
 def new_quote(state: dict, lang: str) -> dict:
     recent = set(state.get("recent", []))
-    # mix: the multilingual set about half the time, otherwise a site
-    q = None if random.random() < 0.45 else fetch_online(state, recent, lang)
-    q = q or pick_offline(recent)
+    src = sources()
+    q = None
+    if "bible" in src and ("sayings" not in src or random.random() < 0.5):
+        q = pick_verse(recent)
+    if q is None:
+        # mix: the multilingual set about half the time, otherwise a site
+        q = None if random.random() < 0.45 else fetch_online(state, recent, lang)
+        q = q or pick_offline(recent)
     q = ensure_translation(q, lang)
     q["shown_at"] = int(time.time())
     state["recent"] = (state.get("recent", []) + [key(q)])[-RECENT_MAX:]
@@ -231,9 +258,9 @@ def main() -> int:
         lang = args[2] if len(args) > 2 else "ru"
         cur = normalize(state.get("current") or {})
         if cur.get("text") and time.time() - cur.get("shown_at", 0) < minutes * 60:
-            had = dict(cur["tr"])
+            had = (dict(cur["tr"]), cur.get("author"))
             q = ensure_translation(cur, lang)
-            if q["tr"] != had:                          # new language: remember the translation
+            if (q["tr"], q.get("author")) != had:                          # new language: remember the translation
                 state["current"] = q
                 save(CURRENT, state)
         else:

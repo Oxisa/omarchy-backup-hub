@@ -9,7 +9,10 @@ var DEFAULTS = {
   posY: 0.86,
   backgroundOpacity: 0.4,
   intervalMinutes: 240,
-  lang: "en"
+  lang: "en",
+  hideLangs: [],                // original languages not to show (their translation shows instead)
+  orientation: "horizontal",    // or "vertical": upright characters in columns
+  sources: ["sayings"]          // "sayings" (quotes) and/or "bible" (verses)
 }
 var SCALE_MIN = 0.6
 var SCALE_MAX = 2.0
@@ -44,6 +47,34 @@ function bottomOf(q, lang) {
   if (q.tr && q.tr[lang]) return q.tr[lang]
   return lang === "ru" && q.ru ? q.ru : ""
 }
+// Original languages in the set, for the on/off chips in the settings.
+var LANGS = ["en", "ja", "la", "fr", "de", "zh", "ko", "ru", "el", "es", "it", "pt"]
+var LANG_NAMES = {
+  en: { en: "English", ru: "Английский" }, ja: { en: "Japanese", ru: "Японский" }, la: { en: "Latin", ru: "Латынь" },
+  fr: { en: "French", ru: "Французский" }, de: { en: "German", ru: "Немецкий" }, zh: { en: "Chinese", ru: "Китайский" },
+  ko: { en: "Korean", ru: "Корейский" }, ru: { en: "Russian", ru: "Русский" }, el: { en: "Greek", ru: "Греческий" },
+  es: { en: "Spanish", ru: "Испанский" }, it: { en: "Italian", ru: "Итальянский" }, pt: { en: "Portuguese", ru: "Португальский" }
+}
+function langName(code, ui) { var n = LANG_NAMES[code]; return n ? (n[ui] || n.en) : code }
+
+// What to show for a quote: the original on top unless its language is
+// switched off — then its English translation (or the one in the chosen
+// language) takes the top line — and under it the translation into the
+// chosen language, unless the top line already is in it.
+function view(q, cfg) {
+  if (!q) return { top: "", topLang: "en", bottom: "" }
+  var lang = cfg.lang, hidden = cfg.hideLangs || []
+  var tr = q.tr || {}
+  if (!tr.ru && q.ru) tr = { ru: q.ru }
+  var top = topOf(q), topLang = langOf(q)
+  if (hidden.indexOf(topLang) >= 0) {
+    if (tr.en && hidden.indexOf("en") < 0) { top = tr.en; topLang = "en" }
+    else if (tr[lang]) { top = tr[lang]; topLang = lang }
+  }
+  var bottom = topLang === lang ? "" : (tr[lang] || "")
+  return { top: top, topLang: topLang, bottom: bottom }
+}
+
 // "Reset" puts the overlay's look back: place, size, background
 function resetLook() {
   return { posX: DEFAULTS.posX, posY: DEFAULTS.posY, scale: DEFAULTS.scale, backgroundOpacity: DEFAULTS.backgroundOpacity }
@@ -61,7 +92,13 @@ function parse(raw) {
     posY: clamp(o.posY, 0, 1, DEFAULTS.posY),
     backgroundOpacity: clamp(o.backgroundOpacity, 0, OPACITY_MAX, DEFAULTS.backgroundOpacity),
     intervalMinutes: INTERVALS.indexOf(Number(o.intervalMinutes)) >= 0 ? Number(o.intervalMinutes) : DEFAULTS.intervalMinutes,
-    lang: o.lang === "ru" ? "ru" : "en"
+    lang: o.lang === "ru" ? "ru" : "en",
+    hideLangs: Array.isArray(o.hideLangs) ? o.hideLangs.filter(function(l) { return typeof l === "string" }) : [],
+    orientation: o.orientation === "vertical" ? "vertical" : "horizontal",
+    sources: (function() {
+      var src = Array.isArray(o.sources) ? o.sources.filter(function(x) { return x === "sayings" || x === "bible" }) : []
+      return src.length ? src : ["sayings"]
+    })()
   }
 }
 
@@ -69,14 +106,14 @@ var STRINGS = {
   en: {
     title: "Daily Quote", show: "Show quote on desktop", size: "Size", background: "Background",
     position: "Position", drag: "Drag to reposition on desktop", change: "Change quote", now: "Show a new quote now",
-    language: "Language", languageHint: "Panel and the translation under the quote", place: "Position", reset: "Reset", hint: "Drag the quote to move it — click anywhere else when done",
+    orientation: "Orientation", horizontal: "Horizontal", vertical: "Vertical", origLangs: "Original languages", origLangsHint: "Off: such quotes show their translation instead", language: "Language", languageHint: "Panel and the translation under the quote", place: "Position", reset: "Reset", hint: "Drag the quote to move it — click anywhere else when done",
     every: { 15: "Every 15 minutes", 30: "Every 30 minutes", 60: "Every hour", 120: "Every 2 hours",
              240: "Every 4 hours", 480: "Every 8 hours", 1440: "Once a day" }
   },
   ru: {
     title: "Цитата дня", show: "Показывать цитату на рабочем столе", size: "Размер", background: "Фон",
     position: "Положение", drag: "Перетащить на рабочем столе", change: "Смена цитаты", now: "Новая цитата сейчас",
-    language: "Язык", languageHint: "Панель и перевод под цитатой", place: "Положение", reset: "Сбросить", hint: "Перетащите цитату — затем кликните в любом другом месте",
+    orientation: "Ориентация", horizontal: "Горизонтально", vertical: "Вертикально", origLangs: "Языки оригинала", origLangsHint: "Выключенный язык — вместо оригинала покажется перевод", language: "Язык", languageHint: "Панель и перевод под цитатой", place: "Положение", reset: "Сбросить", hint: "Перетащите цитату — затем кликните в любом другом месте",
     every: { 15: "Каждые 15 минут", 30: "Каждые 30 минут", 60: "Каждый час", 120: "Каждые 2 часа",
              240: "Каждые 4 часа", 480: "Каждые 8 часов", 1440: "Раз в день" }
   }

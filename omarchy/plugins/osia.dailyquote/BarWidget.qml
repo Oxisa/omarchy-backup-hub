@@ -134,6 +134,16 @@ Panel {
 
         Card {
           SH.HubRow {
+            title: root.t("orientation"); fg: column.fg; fontFamily: column.ff
+            SH.HubSelect {
+              width: Style.space(170); showLabel: false
+              value: root.cfg.orientation
+              options: [{ value: "horizontal", label: root.t("horizontal") }, { value: "vertical", label: root.t("vertical") }]
+              foreground: column.fg; accent: column.accent; background: column.bgc; fontFamily: column.ff
+              onChanged: function(v) { root.set("orientation", v) }
+            }
+          }
+          SH.HubRow {
             title: root.t("place"); fg: column.fg; fontFamily: column.ff
             SH.HubPlacePicker {
               value: Settings.placeOf(root.cfg)
@@ -172,6 +182,31 @@ Panel {
             on: true
             fg: column.fg; accent: column.accent; ink: column.bgc; fontFamily: column.ff
             onClicked: root.ipc("next")
+          }
+          SH.HubRow {
+            title: root.t("origLangs"); hint: root.t("origLangsHint"); fg: column.fg; fontFamily: column.ff
+          }
+          Flow {
+            width: parent.width
+            spacing: Style.space(6)
+            Repeater {
+              model: Settings.LANGS
+              delegate: SH.HubChip {
+                required property string modelData
+                readonly property bool shownLang: root.cfg.hideLangs.indexOf(modelData) < 0
+                icon: shownLang ? "󰄬" : "󰅖"
+                label: Settings.langName(modelData, root.cfg.lang)
+                on: shownLang
+                subtle: true
+                h: Style.space(26)
+                fg: column.fg; accent: column.accent; fontFamily: column.ff
+                onClicked: {
+                  var h = root.cfg.hideLangs.slice()
+                  if (shownLang) h.push(modelData); else h = h.filter(function(x) { return x !== modelData })
+                  root.set("hideLangs", h)
+                }
+              }
+            }
           }
           SH.HubRow {
             title: root.t("language"); hint: root.t("languageHint"); fg: column.fg; fontFamily: column.ff

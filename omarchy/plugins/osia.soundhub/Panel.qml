@@ -49,6 +49,7 @@ Panel {
       case 0: return wide ? 840 : 400      // now playing (+ lyrics)
       case 1: return 920                   // mixer: three columns
       case 2: return 500                   // equalizer
+      case 5: return 520                   // microphone
       default: return 440                  // focus, settings
     }
   }
@@ -127,7 +128,8 @@ Panel {
     { icon: "\u{f1542}", key: "tab.mixer", file: "MixerPage.qml" },
     { icon: "󰺢", key: "tab.eq",      file: "EqPage.qml" },
     { icon: "󱅻", key: "tab.focus",   file: "FocusPage.qml" },
-    { icon: "󰒓", key: "tab.settings", file: "SettingsPage.qml" }
+    { icon: "󰒓", key: "tab.settings", file: "SettingsPage.qml" },
+    { icon: "\u{f036c}", key: "tab.mic",  file: "MicPage.qml" }
   ]
 
   KeyboardPanel {

@@ -25,6 +25,8 @@ Item {
 
   property var cfg: Settings.parse("")
   property var quote: null
+  // top / bottom lines, honouring the languages switched off in the settings
+  readonly property var shown: Settings.view(quote, cfg)
   property bool editMode: false
 
   FontLoader { id: gothic; source: Qt.resolvedUrl("fonts/UnifrakturMaguntia-Book.ttf") }
@@ -126,8 +128,11 @@ Item {
         id: content
         visible: opacity > 0
         opacity: panel.shown ? 1 : 0
-        width: card.width
-        height: card.height
+        // vertical: written like Chinese / Japanese — upright characters in
+        // columns, top to bottom, right to left (VerticalText.qml)
+        readonly property bool vertical: root.cfg.orientation === "vertical"
+        width: qc.width
+        height: qc.height
         z: 1
         Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
@@ -145,68 +150,25 @@ Item {
           function onCfgChanged() { if (!dragArea.drag.active) content.applyStoredPosition() }
         }
 
-        Rectangle {
-          id: card
-          width: column.width + Math.round(36 * panel.s)
-          height: column.height + Math.round(26 * panel.s)
-          radius: 14
-          color: Qt.rgba(0, 0, 0, root.cfg.backgroundOpacity)
-          border.width: root.editMode ? 2 : 0
-          border.color: Qt.rgba(1, 1, 1, 0.8)
-        }
+        Item {
+          id: face
+          anchors.centerIn: parent
+          width: qc.width
+          height: qc.height
 
-        Column {
-          id: column
-          anchors.centerIn: card
-          readonly property real maxTextWidth: Math.min(panel.width * 0.72, 980)
-          spacing: Math.round(10 * panel.s)
-
-          Text {                                     // English, blackletter
-            width: Math.min(implicitWidth, column.maxTextWidth)
-            anchors.horizontalCenter: parent.horizontalCenter
-            textFormat: Text.PlainText
-            text: Settings.topOf(root.quote)
-            color: "#ffffff"
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap
-            font.family: Settings.fontFor(Settings.langOf(root.quote), gothic.name)
-            font.pixelSize: Math.round(34 * panel.s)
-            style: Text.Raised
-            styleColor: Qt.rgba(0, 0, 0, 0.65)
-          }
-
-          Text {                                     // Russian translation
-            width: Math.min(implicitWidth, column.maxTextWidth)
-            anchors.horizontalCenter: parent.horizontalCenter
-            textFormat: Text.PlainText
-            visible: text !== ""
-            text: Settings.bottomOf(root.quote, root.cfg.lang)
-            color: Qt.rgba(1, 1, 1, 0.86)
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap
-            font.family: "Noto Serif"
-            font.italic: true
-            font.pixelSize: Math.round(17 * panel.s)
-            style: Text.Raised
-            styleColor: Qt.rgba(0, 0, 0, 0.65)
-          }
-
-          Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            textFormat: Text.PlainText
-            text: root.quote && root.quote.author ? "— " + root.quote.author : ""
-            color: Qt.rgba(1, 1, 1, 0.6)
-            font.family: "Noto Serif"
-            font.pixelSize: Math.round(12 * panel.s)
-            font.letterSpacing: 1
-            style: Text.Raised
-            styleColor: Qt.rgba(0, 0, 0, 0.65)
-          }
+        QuoteCard {
+          id: qc
+          quote: root.quote
+          cfg: root.cfg
+          s: panel.s
+          screenW: panel.width
+          screenH: panel.height
+          editing: root.editMode
         }
 
         MouseArea {
           id: dragArea
-          anchors.fill: card
+          anchors.fill: qc
           enabled: root.editMode
           cursorShape: Qt.SizeAllCursor
           drag.target: content
@@ -217,6 +179,7 @@ Item {
           drag.maximumY: panel.height - content.height
           onReleased: root.commitPosition((content.x + content.width / 2) / panel.width,
                                           (content.y + content.height / 2) / panel.height)
+        }
         }
       }
     }

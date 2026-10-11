@@ -1,0 +1,399 @@
+#!/usr/bin/env python3
+"""SoundHub microphone processing.
+
+Like the equalizer, a PipeWire filter-chain hosted by its own `pipewire -c`
+client under a systemd user unit: switching it on or changing it never
+restarts WirePlumber or drops other audio.
+
+  source  soundhub_mic          the processed microphone (made the default source)
+  stream  soundhub_mic.capture  reads the physical microphone ("target")
+
+Chain (mono), each stage optional:
+  noise suppression  "webrtc"  PipeWire's echo-cancel module (WebRTC: noise
+                               suppression, automatic gain, high-pass), no install
+                     "deepfilter" DeepFilterNet's LADSPA plugin (AI, best),
+                               if /usr/lib/ladspa/libdeep_filter_ladspa.so exists
+  high-pass  -> gate -> compressor -> 4-band EQ -> gain (boost) -> limiter
+Gate, compressor and limiter are LSP plugins (lsp-plugins-lv2, shipped by
+Omarchy); the rest are PipeWire builtins. Gain and EQ changes are pushed live;
+anything that changes the chain restarts the unit (about a second).
+
+Commands (all print one JSON object):
+  status
+  enable [--target SOURCE]   start and make the processed mic the default source
+  disable                    restore the physical mic as default, stop
+  set JSON                   merge settings (see DEFAULTS), apply
+  preset NAME                voice | call | stream | noisy | natural
+  retarget SOURCE            read another physical microphone
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+NAME = "soundhub_mic"
+CAP_NAME = "soundhub_mic.capture"
+AEC_NAME = "soundhub_mic_aec"
+UNIT = "soundhub-mic.service"
+LSP = "http://lsp-plug.in/plugins/lv2/"
+DEEPFILTER = "/usr/lib/ladspa/libdeep_filter_ladspa.so"
+
+CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+STATE = CONFIG_HOME / "soundhub" / "mic.json"
+CONF = CONFIG_HOME / "pipewire" / "soundhub-mic.conf"
+UNIT_FILE = CONFIG_HOME / "systemd" / "user" / UNIT
+
+EQ_FREQS = [120, 300, 3500, 10000]
+EQ_KINDS = ["bq_lowshelf", "bq_peaking", "bq_peaking", "bq_highshelf"]
+EQ_QS = [0.7, 1.0, 0.9, 0.7]
+
+DEFAULTS = {
+    "enabled": False, "target": "", "preset": "voice",
+    "noise": "webrtc",            # off | webrtc | deepfilter
+    "noiseStrength": 30,          # deepfilter: attenuation limit, dB (higher = stronger)
+    "highpass": 80,               # Hz, 0 = off
+    "gate": True, "gateDb": -50,
+    "comp": True, "compDb": -22, "ratio": 3.0,
+    "eq": [0, -2, 3, 2],          # dB at 120 Hz, 300 Hz, 3.5 kHz, 10 kHz
+    "gainDb": 0,                  # -10 … +20
+    "limiter": True,
+}
+PRESETS = {
+    # as it is: only the noise suppression the user picked
+    "natural": {"highpass": 0, "gate": False, "comp": False, "eq": [0, 0, 0, 0], "gainDb": 0, "limiter": True},
+    # clear speech for most uses
+    "voice": {"highpass": 80, "gate": True, "gateDb": -50, "comp": True, "compDb": -22, "ratio": 3.0,
+              "eq": [0, -2, 3, 2], "gainDb": 2, "limiter": True},
+    # calls: WebRTC (echo, levels), a little presence
+    "call": {"noise": "webrtc", "highpass": 100, "gate": False, "comp": True, "compDb": -20, "ratio": 2.5,
+             "eq": [-1, -1, 2, 0], "gainDb": 0, "limiter": True},
+    # stream / podcast: warmer, denser, louder
+    "stream": {"highpass": 70, "gate": True, "gateDb": -45, "comp": True, "compDb": -24, "ratio": 4.0,
+               "eq": [2, -3, 3, 3], "gainDb": 4, "limiter": True},
+    # noisy room: strongest suppression and a tighter gate
+    "noisy": {"noiseStrength": 60, "highpass": 120, "gate": True, "gateDb": -40, "comp": True, "compDb": -22,
+              "ratio": 3.0, "eq": [-2, -2, 3, 1], "gainDb": 2, "limiter": True},
+}
+
+
+def run(args: list[str], timeout: float = 4.0) -> subprocess.CompletedProcess:
+    return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+
+
+def out(obj: dict) -> int:
+    print(json.dumps(obj, ensure_ascii=False))
+    return 0 if obj.get("ok", True) else 1
+
+
+def lin(db: float) -> float:
+    return round(10 ** (db / 20), 6)
+
+
+def have_deepfilter() -> bool:
+    return os.path.exists(DEEPFILTER)
+
+
+def load() -> dict:
+    s = dict(DEFAULTS)
+    try:
+        s.update(json.loads(STATE.read_text()))
+    except (OSError, ValueError):
+        pass
+    if s["noise"] == "deepfilter" and not have_deepfilter():
+        s["noise"] = "webrtc"
+    return s
+
+
+def save(s: dict) -> None:
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = STATE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(s, indent=2))
+    tmp.replace(STATE)
+
+
+# ---- pipewire config --------------------------------------------------------
+
+def q(v: str) -> str:
+    return json.dumps(v)
+
+
+def graph(s: dict) -> tuple[list, list, str, str]:
+    """Nodes and links of the filter graph, its first input and last output."""
+    nodes, chain = [], []
+
+    def add(name: str, text: str, port_in: str = "In", port_out: str = "Out") -> None:
+        nodes.append(f"        {text}")
+        chain.append((name, port_in, port_out))
+
+    if s["noise"] == "deepfilter" and have_deepfilter():
+        add("df", f'{{ type = ladspa name = df plugin = {q(DEEPFILTER)} label = deep_filter_mono '
+                  f'control = {{ "Attenuation Limit (dB)" = {float(s["noiseStrength"]):.1f} }} }}',
+            "Audio In", "Audio Out")
+    if s["highpass"]:
+        add("hp", f'{{ type = builtin name = hp label = bq_highpass control = {{ "Freq" = {float(s["highpass"]):.1f} "Q" = 0.7 }} }}')
+    if s["gate"]:
+        add("gate", f'{{ type = lv2 name = gate plugin = "{LSP}gate_mono" control = {{ "gt" = {lin(s["gateDb"])} '
+                    f'"gz" = 0.5 "at" = 5 "rt" = 150 "hold" = 80 "gr" = {lin(-30)} }} }}', "in", "out")
+    if s["comp"]:
+        add("comp", f'{{ type = lv2 name = comp plugin = "{LSP}compressor_mono" control = {{ "al" = {lin(s["compDb"])} '
+                    f'"cr" = {float(s["ratio"]):.2f} "at" = 10 "rt" = 120 "kn" = {lin(-6)} "mk" = 1.0 }} }}', "in", "out")
+    for i in range(4):
+        add(f"eq{i}", f'{{ type = builtin name = eq{i} label = {EQ_KINDS[i]} '
+                      f'control = {{ "Freq" = {EQ_FREQS[i]:.1f} "Q" = {EQ_QS[i]} "Gain" = {float(s["eq"][i]):.1f} }} }}')
+    add("gain", f'{{ type = builtin name = gain label = mixer control = {{ "Gain 1" = {lin(s["gainDb"])} }} }}', "In 1", "Out")
+    if s["limiter"]:
+        add("lim", f'{{ type = lv2 name = lim plugin = "{LSP}limiter_mono" control = {{ "th" = {lin(-1)} }} }}', "in", "out")
+    links = [f'        {{ output = "{a[0]}:{a[2]}" input = "{b[0]}:{b[1]}" }}' for a, b in zip(chain, chain[1:])]
+    return nodes, links, f"{chain[0][0]}:{chain[0][1]}", f"{chain[-1][0]}:{chain[-1][2]}"
+
+
+def config_text(s: dict) -> str:
+    nodes, links, first, last = graph(s)
+    target = s["target"]
+    aec = ""
+    if s["noise"] == "webrtc":
+        # WebRTC sits before the chain: it reads the mic, the chain reads it
+        aec = f"""
+  {{ name = libpipewire-module-echo-cancel
+    args = {{
+      library.name = aec/libspa-aec-webrtc
+      monitor.mode = true
+      node.latency = 1024/48000
+      audio.channels = 1
+      audio.position = [ MONO ]
+      aec.args = {{
+        webrtc.noise_suppression = true
+        webrtc.gain_control = true
+        webrtc.high_pass_filter = true
+        webrtc.extended_filter = true
+      }}
+      capture.props = {{
+        node.name = "{AEC_NAME}.capture"
+        node.passive = true{chr(10) + '        target.object = ' + q(target) if target else ''}
+      }}
+      sink.props = {{
+        node.name = "{AEC_NAME}.sink"
+        node.passive = true
+      }}
+      playback.props = {{
+        node.name = "{AEC_NAME}.playback"
+        node.passive = true
+      }}
+      source.props = {{
+        node.name = "{AEC_NAME}"
+        node.description = "SoundHub mic (WebRTC)"
+        priority.session = 0
+      }}
+    }}
+  }}"""
+        target = AEC_NAME
+    tgt = f"\n        target.object = {q(target)}" if target else ""
+    return f"""# Managed by SoundHub (osia.soundhub). Rewritten on every change.
+context.properties = {{ log.level = 0 }}
+context.spa-libs = {{
+    audio.convert.* = audioconvert/libspa-audioconvert
+    support.*       = support/libspa-support
+}}
+context.modules = [
+  {{ name = libpipewire-module-rt args = {{ }} flags = [ ifexists nofail ] }}
+  {{ name = libpipewire-module-protocol-native }}
+  {{ name = libpipewire-module-client-node }}
+  {{ name = libpipewire-module-adapter }}{aec}
+  {{ name = libpipewire-module-filter-chain
+    args = {{
+      node.description = "SoundHub microphone"
+      media.name = "SoundHub microphone"
+      filter.graph = {{
+        nodes = [
+{chr(10).join(nodes)}
+        ]
+        links = [
+{chr(10).join(links)}
+        ]
+        inputs = [ "{first}" ]
+        outputs = [ "{last}" ]
+      }}
+      audio.channels = 1
+      audio.position = [ MONO ]
+      capture.props = {{
+        node.name = {q(CAP_NAME)}
+        node.passive = true{tgt}
+      }}
+      playback.props = {{
+        node.name = {q(NAME)}
+        node.description = "SoundHub microphone"
+        media.class = Audio/Source
+      }}
+    }}
+  }}
+]
+"""
+
+
+UNIT_TEXT = """[Unit]
+Description=SoundHub microphone processing (PipeWire filter-chain)
+After=pipewire.service
+Requires=pipewire.service
+
+[Service]
+ExecStart=/usr/bin/pipewire -c soundhub-mic.conf
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=pipewire.service
+"""
+
+
+def write_files(s: dict) -> None:
+    CONF.parent.mkdir(parents=True, exist_ok=True)
+    tmp = CONF.with_suffix(".tmp")
+    tmp.write_text(config_text(s))
+    tmp.replace(CONF)
+    UNIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    if not UNIT_FILE.exists() or UNIT_FILE.read_text() != UNIT_TEXT:
+        UNIT_FILE.write_text(UNIT_TEXT)
+        run(["systemctl", "--user", "daemon-reload"])
+
+
+# ---- graph -------------------------------------------------------------------
+
+def dump() -> list:
+    r = run(["pw-dump"], 5.0)
+    try:
+        return json.loads(r.stdout) if r.returncode == 0 else []
+    except ValueError:
+        return []
+
+
+def node_id(objs: list, name: str) -> str:
+    for o in objs:
+        if o.get("type") == "PipeWire:Interface:Node" and (o.get("info") or {}).get("props", {}).get("node.name") == name:
+            return str(o.get("id"))
+    return ""
+
+
+def wait_node(name: str, timeout: float = 6.0) -> str:
+    end = time.time() + timeout
+    while time.time() < end:
+        nid = node_id(dump(), name)
+        if nid:
+            return nid
+        time.sleep(0.2)
+    return ""
+
+
+def default_source() -> str:
+    r = run(["pactl", "get-default-source"])
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def unit_active() -> bool:
+    return run(["systemctl", "--user", "is-active", "--quiet", UNIT]).returncode == 0
+
+
+def push_live(s: dict) -> None:
+    """Gain and EQ without a restart (the filter node is the capture side)."""
+    nid = node_id(dump(), CAP_NAME)
+    if not nid:
+        return
+    params: list = ["gain:Gain 1", lin(s["gainDb"])]
+    for i in range(4):
+        params += [f"eq{i}:Gain", float(s["eq"][i])]
+    run(["pw-cli", "set-param", nid, "Props", json.dumps({"params": params})])
+
+
+def status(s: dict, ok: bool = True, error: str = "") -> dict:
+    return {"ok": ok, "error": error, "running": unit_active(), "defaultSource": default_source(),
+            "deepfilter": have_deepfilter(), "presets": list(PRESETS), **s}
+
+
+# ---- commands ----------------------------------------------------------------
+
+STRUCTURAL = ("noise", "noiseStrength", "highpass", "gate", "gateDb", "comp", "compDb", "ratio", "limiter", "target")
+
+
+def restart(s: dict) -> dict:
+    write_files(s)
+    run(["systemctl", "--user", "restart", UNIT])
+    if not wait_node(NAME):
+        return status(s, False, "microphone processing did not start (see: journalctl --user -u soundhub-mic)")
+    run(["pactl", "set-default-source", NAME])
+    return status(s)
+
+
+def cmd_enable(s: dict, target: str) -> dict:
+    current = default_source()
+    if not target:
+        target = current if current and not current.startswith("soundhub_") else s["target"]
+    if not target:
+        return status(s, False, "no microphone to process")
+    s["target"], s["enabled"] = target, True
+    save(s)
+    run(["systemctl", "--user", "enable", UNIT])
+    return restart(s)
+
+
+def cmd_disable(s: dict) -> dict:
+    s["enabled"] = False
+    save(s)
+    if s["target"] and default_source().startswith("soundhub_"):
+        run(["pactl", "set-default-source", s["target"]])
+    run(["systemctl", "--user", "disable", "--now", UNIT])
+    return status(s)
+
+
+def apply(s: dict, old: dict) -> dict:
+    save(s)
+    if not s["enabled"]:
+        write_files(s)
+        return status(s)
+    if any(s[k] != old[k] for k in STRUCTURAL) or not unit_active():
+        return restart(s)
+    push_live(s)
+    return status(s)
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    s = load()
+    cmd = args[0] if args else "status"
+    if cmd == "status":
+        return out(status(s))
+    if cmd == "enable":
+        t = args[args.index("--target") + 1] if "--target" in args else ""
+        return out(cmd_enable(s, t))
+    if cmd == "disable":
+        return out(cmd_disable(s))
+    if cmd == "set" and len(args) > 1:
+        old = dict(s)
+        try:
+            patch = json.loads(args[1])
+        except ValueError:
+            return out(status(s, False, "bad JSON"))
+        for k, v in patch.items():
+            if k in DEFAULTS and k != "enabled":
+                s[k] = v
+        if patch.keys() - {"preset"}:
+            s["preset"] = patch.get("preset", "custom")
+        return out(apply(s, old))
+    if cmd == "preset" and len(args) > 1 and args[1] in PRESETS:
+        old = dict(s)
+        s.update(PRESETS[args[1]])
+        s["preset"] = args[1]
+        return out(apply(s, old))
+    if cmd == "retarget" and len(args) > 1:
+        old = dict(s)
+        s["target"] = args[1]
+        return out(apply(s, old))
+    print(__doc__, file=sys.stderr)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
