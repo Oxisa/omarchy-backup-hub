@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import qs.Commons
 import "I18n.js" as I18n
 
@@ -78,6 +79,72 @@ Column {
           value: page.opt("pressing", "theme")
           onChanged: function(v) { host.persist({ pressing: v }) }
         }
+      }
+    }
+  }
+
+  Section {
+    title: page.t("set.desk"); icon: "󰍹"
+    HubRow {
+      title: page.t("set.deskShow"); hint: page.t("set.deskHint"); fg: page.fg; fontFamily: page.ff
+      HubSwitch {
+        checked: host ? host.opt("deskWidget", false) === true : false
+        fg: page.fg; accent: page.accent; ink: page.bgc
+        onToggled: host.persist({ deskWidget: !checked })
+      }
+    }
+    HubRow {
+      visible: host && host.opt("deskWidget", false) === true
+      title: page.t("set.deskScreen"); fg: page.fg; fontFamily: page.ff
+      Select {
+        options: Quickshell.screens.map(function(sc) { return { value: sc.name, label: sc.name + (sc.model ? " · " + sc.model : "") } })
+        value: page.opt("deskScreen", "") || (Quickshell.screens.length ? Quickshell.screens[0].name : "")
+        onChanged: function(v) { host.persist({ deskScreen: v }) }
+      }
+    }
+    HubRow {
+      visible: host && host.opt("deskWidget", false) === true
+      title: page.t("set.deskPos"); fg: page.fg; fontFamily: page.ff
+      Rectangle {                                       // 3×3 position picker, like a little screen
+        width: Style.space(96); height: Style.space(62)
+        radius: Style.space(8)
+        color: HubStyle.tint(page.fg, HubStyle.control)
+        Grid {
+          anchors.centerIn: parent
+          columns: 3
+          spacing: Style.space(4)
+          Repeater {
+            model: ["tl", "t", "tr", "l", "c", "r", "bl", "b", "br"]
+            delegate: Rectangle {
+              id: cell
+              required property string modelData
+              readonly property bool on: page.opt("deskPos", "br") === modelData
+              width: Style.space(26); height: Style.space(16)
+              radius: Style.space(4)
+              color: on ? page.accent : HubStyle.tint(page.fg, cellMouse.containsMouse ? 0.22 : 0.10)
+              Behavior on color { ColorAnimation { duration: HubStyle.anim } }
+              MouseArea {
+                id: cellMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: host.persist({ deskPos: cell.modelData })
+              }
+            }
+          }
+        }
+      }
+    }
+    HubRow {
+      visible: host && host.opt("deskWidget", false) === true
+      title: page.t("set.deskBg"); fg: page.fg; fontFamily: page.ff
+      HubSlider {
+        width: page.selW
+        minimum: 0.2; maximum: 1; step: 0.05
+        value: host ? Number(host.opt("deskOpacity", 0.85)) : 0.85
+        fillColor: page.accent
+        fontFamily: page.ff
+        onReleased: function(v) { host.persist({ deskOpacity: Math.round(v * 100) / 100 }) }
       }
     }
   }

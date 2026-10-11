@@ -22,3 +22,5 @@ HubChip 1.0 HubChip.qml
 HubSelect 1.0 HubSelect.qml
 HubSwitch 1.0 HubSwitch.qml
 HubRow 1.0 HubRow.qml
+DesktopWidget 1.0 DesktopWidget.qml
+MiniPlayer 1.0 MiniPlayer.qml

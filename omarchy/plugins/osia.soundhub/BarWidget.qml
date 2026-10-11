@@ -95,6 +95,23 @@ BarWidget {
     onTriggered: Quickshell.execDetached([String(Qt.resolvedUrl("bin/soundhub-eq")).replace("file://", ""), "ensure"])
   }
 
+  // ---- desktop widget: hosted by the bar on the chosen monitor only ----
+  readonly property var myScreen: root.QsWindow.window ? root.QsWindow.window.screen : null
+  readonly property string deskScreen: String(setting("deskScreen", "")) || (Quickshell.screens.length ? Quickshell.screens[0].name : "")
+  // Layer-shell anchors don't re-apply on a live surface, so a new position
+  // means a new window: Variants rebuilds it whenever the place changes.
+  readonly property bool deskOn: setting("deskWidget", false) === true && myScreen !== null && myScreen.name === deskScreen
+  Variants {
+    model: root.deskOn ? [String(root.setting("deskPos", "br"))] : []
+    delegate: DesktopWidget {
+      required property var modelData
+      host: root
+      screen: root.myScreen
+      place: modelData
+      bgOpacity: Number(root.setting("deskOpacity", 0.85))
+    }
+  }
+
   // ambient focus mixer: lives here so it keeps playing with the panel closed
   FocusState { id: focusState }
 
