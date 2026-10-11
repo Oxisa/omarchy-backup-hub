@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "settings.js" as Settings
+import "../osia.soundhub" as SH
 
 // Bar button + control panel for the desktop quote: show/hide, size,
 // background, drag to move, how often it changes, a new quote now, and the
@@ -29,9 +30,10 @@ Panel {
     onFileChanged: reload()
   }
 
-  function set(key, value) {
+  function set(key, value) { var v = {}; v[key] = value; setMany(v) }
+  function setMany(values) {
     var c = Object.assign({}, cfg)
-    c[key] = value
+    for (var k in values) c[k] = values[k]
     cfg = Settings.parse(JSON.stringify(c))
     settingsFile.setText(JSON.stringify(cfg))
   }
@@ -58,7 +60,7 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(340))
+    contentWidth: panel.fittedContentWidth(Style.space(400))
     contentHeight: panel.fittedContentHeight(column.implicitHeight)
 
     PanelKeyCatcher {
@@ -72,160 +74,115 @@ Panel {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        spacing: Style.space(14)
+        spacing: SH.HubStyle.gap
+
+        readonly property color fg: root.bar ? root.bar.barForeground : Color.foreground
+        readonly property color accent: Color.accent
+        readonly property color bgc: Color.background
+        readonly property string ff: root.bar ? root.bar.fontFamily : Style.font.family
+
+        component Card: SH.HubCard {
+          default property alias rows: body.data
+          width: column.width
+          height: body.implicitHeight + SH.HubStyle.pad * 2
+          fg: column.fg; accent: column.accent
+          Column {
+            id: body
+            x: SH.HubStyle.pad; y: SH.HubStyle.pad
+            width: parent.width - SH.HubStyle.pad * 2
+            spacing: Style.space(10)
+          }
+        }
 
         Text {
-          textFormat: Text.PlainText
-          text: root.t("title")
-          color: root.bar.foreground
-          font.family: root.bar.fontFamily
-          font.pixelSize: Style.font.title
-          font.bold: true
+          leftPadding: Style.space(4)
+          text: "\u{f0757}  " + root.t("title")
+          color: column.fg
+          font.family: column.ff; font.pixelSize: Style.font.title; font.bold: true
         }
 
-        PanelSeparator { foreground: root.bar.foreground }
-
-        Item {
-          width: parent.width
-          implicitHeight: Math.max(showLabel.implicitHeight, showSwitch.implicitHeight)
-          Text {
-            id: showLabel
-            textFormat: Text.PlainText
-            text: root.t("show")
-            color: root.bar.foreground
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.body
-            anchors.left: parent.left
-            anchors.right: showSwitch.left
-            anchors.rightMargin: Style.space(8)
-            elide: Text.ElideRight
-            anchors.verticalCenter: parent.verticalCenter
-          }
-          ToggleSwitch {
-            id: showSwitch
-            checked: root.cfg.visible
-            foreground: root.bar.foreground
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            onToggled: root.set("visible", !root.cfg.visible)
-          }
-        }
-
-        PanelSeparator { foreground: root.bar.foreground }
-
-        Column {
-          width: parent.width
-          spacing: Style.space(8)
-          Item {
-            width: parent.width
-            implicitHeight: sizeHeader.implicitHeight
-            PanelSectionHeader { id: sizeHeader; text: root.t("size").toUpperCase(); foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
-            Text {
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              text: Math.round((sizeSlider.dragging ? sizeSlider.liveValue : root.cfg.scale) * 100) + "%"
-              color: Qt.darker(root.bar.foreground, 1.4)
-              font.family: root.bar.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
+        Card {
+          SH.HubRow {
+            title: root.t("show"); fg: column.fg; fontFamily: column.ff
+            SH.HubSwitch {
+              checked: root.cfg.visible
+              fg: column.fg; accent: column.accent; ink: column.bgc
+              onToggled: root.set("visible", !root.cfg.visible)
             }
           }
-          PanelSlider {
-            id: sizeSlider
-            bar: root.bar
-            width: parent.width
-            minimum: Settings.SCALE_MIN
-            maximum: Settings.SCALE_MAX
-            step: 0.05
-            value: root.cfg.scale
-            onReleased: function(v) { root.set("scale", v) }
-          }
-        }
-
-        PanelSeparator { foreground: root.bar.foreground }
-
-        Column {
-          width: parent.width
-          spacing: Style.space(8)
-          Item {
-            width: parent.width
-            implicitHeight: bgHeader.implicitHeight
-            PanelSectionHeader { id: bgHeader; text: root.t("background").toUpperCase(); foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
-            Text {
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              text: Math.round((bgSlider.dragging ? bgSlider.liveValue : root.cfg.backgroundOpacity) * 100) + "%"
-              color: Qt.darker(root.bar.foreground, 1.4)
-              font.family: root.bar.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
+          SH.HubRow {
+            title: root.t("size"); fg: column.fg; fontFamily: column.ff
+            SH.HubSlider {
+              width: Style.space(170)
+              minimum: Settings.SCALE_MIN; maximum: Settings.SCALE_MAX; step: 0.05
+              value: root.cfg.scale
+              fillColor: column.accent; fontFamily: column.ff
+              onReleased: function(v) { root.set("scale", v) }
             }
           }
-          PanelSlider {
-            id: bgSlider
-            bar: root.bar
-            width: parent.width
-            minimum: 0
-            maximum: Settings.OPACITY_MAX
-            step: 0.05
-            value: root.cfg.backgroundOpacity
-            onReleased: function(v) { root.set("backgroundOpacity", v) }
+          SH.HubRow {
+            title: root.t("background"); fg: column.fg; fontFamily: column.ff
+            SH.HubSlider {
+              width: Style.space(170)
+              minimum: 0; maximum: Settings.OPACITY_MAX; step: 0.05
+              value: root.cfg.backgroundOpacity
+              fillColor: column.accent; fontFamily: column.ff
+              onReleased: function(v) { root.set("backgroundOpacity", v) }
+            }
           }
         }
 
-        PanelSeparator { foreground: root.bar.foreground }
-
-        Column {
-          width: parent.width
-          spacing: Style.space(10)
-          PanelSectionHeader { text: root.t("position").toUpperCase(); foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
-          Button {
-            width: parent.width
-            text: root.t("drag")
-            fontSize: Style.font.bodySmall
-            foreground: root.bar.foreground
-            fontFamily: root.bar.fontFamily
-            horizontalPadding: Style.spacing.controlPaddingX
-            verticalPadding: Style.spacing.controlPaddingY
-            bordered: true
-            onClicked: { root.close(); root.ipc("edit") }
+        Card {
+          SH.HubRow {
+            title: root.t("place"); fg: column.fg; fontFamily: column.ff
+            SH.HubPlacePicker {
+              value: Settings.placeOf(root.cfg)
+              fg: column.fg; accent: column.accent
+              onPicked: function(p) { root.setMany({ posX: Settings.PLACES[p][0], posY: Settings.PLACES[p][1] }) }
+            }
+          }
+          Row {
+            spacing: Style.space(6)
+            SH.HubChip {
+              icon: "\u{f01be}"; label: root.t("drag")
+              fg: column.fg; accent: column.accent; fontFamily: column.ff
+              onClicked: { root.close(); root.ipc("edit") }
+            }
+            SH.HubChip {
+              icon: "󰑓"; label: root.t("reset")
+              fg: column.fg; accent: column.accent; fontFamily: column.ff
+              onClicked: root.setMany(Settings.resetLook())
+            }
           }
         }
 
-        PanelSeparator { foreground: root.bar.foreground }
-
-        Column {
-          width: parent.width
-          spacing: Style.space(10)
-          PanelSectionHeader { text: root.t("change").toUpperCase(); foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
-          Dropdown {
-            width: parent.width
-            showLabel: false
-            foreground: root.bar.foreground
-            fontFamily: root.bar.fontFamily
-            value: String(root.cfg.intervalMinutes)
-            options: Settings.INTERVALS.map(function(m) { return { value: String(m), label: root.t("every")[m] } })
-            onChanged: function(v) { root.set("intervalMinutes", parseInt(v, 10)) }
+        Card {
+          SH.HubRow {
+            title: root.t("change"); fg: column.fg; fontFamily: column.ff
+            SH.HubSelect {
+              width: Style.space(170); showLabel: false
+              value: String(root.cfg.intervalMinutes)
+              options: Settings.INTERVALS.map(function(m) { return { value: String(m), label: root.t("every")[m] } })
+              foreground: column.fg; accent: column.accent; background: column.bgc; fontFamily: column.ff
+              onChanged: function(v) { root.set("intervalMinutes", parseInt(v, 10)) }
+            }
           }
-          Button {
-            width: parent.width
-            text: root.t("now")
-            fontSize: Style.font.bodySmall
-            foreground: root.bar.foreground
-            fontFamily: root.bar.fontFamily
-            horizontalPadding: Style.spacing.controlPaddingX
-            verticalPadding: Style.spacing.controlPaddingY
-            bordered: true
+          SH.HubChip {
+            icon: "\u{f0450}"; label: root.t("now")
+            on: true
+            fg: column.fg; accent: column.accent; ink: column.bgc; fontFamily: column.ff
             onClicked: root.ipc("next")
           }
-        }
-
-        PanelSeparator { foreground: root.bar.foreground }
-
-        Dropdown {
-          width: parent.width
-          label: root.t("language")
-          foreground: root.bar.foreground
-          fontFamily: root.bar.fontFamily
-          value: root.cfg.lang
-          options: [{ value: "en", label: "English" }, { value: "ru", label: "Русский" }]
-          onChanged: function(v) { root.set("lang", v) }
+          SH.HubRow {
+            title: root.t("language"); hint: root.t("languageHint"); fg: column.fg; fontFamily: column.ff
+            SH.HubSelect {
+              width: Style.space(170); showLabel: false
+              value: root.cfg.lang
+              options: [{ value: "en", label: "English" }, { value: "ru", label: "Русский" }]
+              foreground: column.fg; accent: column.accent; background: column.bgc; fontFamily: column.ff
+              onChanged: function(v) { root.set("lang", v) }
+            }
+          }
         }
       }
     }

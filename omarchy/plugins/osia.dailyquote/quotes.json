@@ -1,82 +1,1088 @@
 [
-  {"en": "Opportunities multiply as they are seized.", "ru": "Возможности умножаются, когда их хватают.", "author": "Sun Tzu"},
-  {"en": "Do something. If it works, do more of it. If it doesn't, do something else.", "ru": "Делайте что-нибудь. Если получается — делайте больше. Если нет — делайте что-то другое.", "author": "Franklin D. Roosevelt"},
-  {"en": "A minute's success pays the failure of years.", "ru": "Минута успеха окупает годы неудач.", "author": "Robert Browning"},
-  {"en": "The more you know, the more you know you don't know.", "ru": "Чем больше знаешь, тем больше понимаешь, что ничего не знаешь.", "author": "Aristotle"},
-  {"en": "Don't be pushed around by the fears in your mind. Be led by the dreams in your heart.", "ru": "Не позволяй страхам в голове управлять тобой. Пусть ведут мечты в сердце.", "author": "Roy T. Bennett"},
-  {"en": "We become brave by doing brave acts.", "ru": "Мы становимся смелыми, совершая смелые поступки.", "author": "Aristotle"},
-  {"en": "Sometimes success isn't about making the right decision, it's about making some decision.", "ru": "Иногда успех не в том, чтобы принять правильное решение, а в том, чтобы принять хоть какое-то.", "author": "Robin Sharma"},
-  {"en": "Open your eyes and look within. Are you satisfied with the life you're living?", "ru": "Открой глаза и загляни внутрь. Тебя устраивает жизнь, которой ты живёшь?", "author": "Bob Marley"},
-  {"en": "You can't build a reputation on what you are going to do.", "ru": "Репутацию не построить на том, что только собираешься сделать.", "author": "Henry Ford"},
-  {"en": "You may be disappointed if you fail, but you are doomed if you don't try.", "ru": "Неудача может разочаровать, но если не пробовать — ты обречён.", "author": "Beverly Sills"},
-  {"en": "If you correct your mind, the rest of your life will fall into place.", "ru": "Приведи в порядок свой ум — и остальная жизнь встанет на место.", "author": "Lao Tzu"},
-  {"en": "So we beat on, boats against the current, borne back ceaselessly into the past.", "ru": "Так мы и пытаемся плыть вперёд, борясь с течением, а оно всё сносит и сносит наши суденышки обратно в прошлое.", "author": "F. Scott Fitzgerald"},
-  {"en": "The important thing is not what one is born with but what use one makes of that equipment.", "ru": "Важно не то, с чем человек родился, а то, как он этим распорядится.", "author": "Alfred Adler"},
-  {"en": "You are the average of the five people you spend most time with.", "ru": "Ты — среднее арифметическое пяти людей, с которыми проводишь больше всего времени.", "author": "Jim Rohn"},
-  {"en": "Don't give up on your dreams, or your dreams will give up on you.", "ru": "Не отказывайся от своей мечты, иначе она откажется от тебя.", "author": "John Wooden"},
-  {"en": "Dark times lie ahead of us and there will be a time when we must choose between what is easy and what is right.", "ru": "Впереди тёмные времена, и настанет час, когда придётся выбирать между тем, что легко, и тем, что правильно.", "author": "Albus Dumbledore"},
-  {"en": "Trying to define yourself is like trying to bite your own teeth.", "ru": "Пытаться определить себя — всё равно что пытаться укусить собственные зубы.", "author": "Zen Proverb"},
-  {"en": "Rest in reason; move in passion.", "ru": "Отдыхай в разуме, двигайся в страсти.", "author": "Kahlil Gibran"},
-  {"en": "We can have more than we've got because we can become more than we are.", "ru": "Мы можем иметь больше, чем имеем, потому что можем стать больше, чем мы есть.", "author": "Jim Rohn"},
-  {"en": "In the end, it's not the years in your life that count. It's the life in your years.", "ru": "В конце концов важны не годы в твоей жизни, а жизнь в твоих годах.", "author": "Abraham Lincoln"},
-  {"en": "To be prepared is half the victory.", "ru": "Быть готовым — уже половина победы.", "author": "Miguel de Cervantes"},
-  {"en": "It always started with a dream.", "ru": "Всё всегда начиналось с мечты.", "author": "Conrad Hilton"},
-  {"en": "See what you're doing wrong, laugh at it, change and do better.", "ru": "Заметь, что делаешь не так, посмейся над этим, измени и сделай лучше.", "author": "Spencer Johnson"},
-  {"en": "Bloom where you are planted.", "ru": "Цвети там, где тебя посадили.", "author": "Mary Engelbreit"},
-  {"en": "Play your part in life, but never forget that it is only a role.", "ru": "Играй свою партию в жизни, но не забывай, что это лишь роль.", "author": "Paramahansa Yogananda"},
-  {"en": "Instead of being intimidated by the limitations, be inspired to find new ways around them.", "ru": "Не пугайся ограничений — пусть они вдохновляют искать новые пути в обход.", "author": "Ralph Marston"},
-  {"en": "Growth comes at the point of resistance.", "ru": "Рост начинается там, где появляется сопротивление.", "author": "Josh Waitzkin"},
-  {"en": "Blessings and burdens are not mutually exclusive.", "ru": "Благо и бремя не исключают друг друга.", "author": "Ryan Holiday"},
-  {"en": "Against the assault of laughter nothing can stand.", "ru": "Против натиска смеха ничто не устоит.", "author": "Mark Twain"},
-  {"en": "If you love life, don't waste time, for time is what life is made up of.", "ru": "Если любишь жизнь — не трать время зря, ведь жизнь из него и состоит.", "author": "Bruce Lee"},
-  {"en": "A loving heart is the truest wisdom.", "ru": "Любящее сердце — самая истинная мудрость.", "author": "Charles Dickens"},
-  {"en": "We become what we believe.", "ru": "Мы становимся тем, во что верим.", "author": "Lolly Daskal"},
-  {"en": "Nothing is too high for a man to reach, but he must climb with care and confidence.", "ru": "Нет вершины, недоступной человеку, но взбираться нужно осторожно и уверенно.", "author": "Hans Christian Andersen"},
-  {"en": "You become what you think about.", "ru": "Ты становишься тем, о чём думаешь.", "author": "Earl Nightingale"},
-  {"en": "Be fascinated instead of frustrated.", "ru": "Восхищайся, а не раздражайся.", "author": "Jim Rohn"},
-  {"en": "When you've got nothing, you've got nothing to lose.", "ru": "Когда у тебя ничего нет, тебе нечего терять.", "author": "Bob Dylan"},
-  {"en": "All we have to decide is what to do with the time that is given to us.", "ru": "Нам решать лишь одно — что делать с отпущенным нам временем.", "author": "J.R.R. Tolkien"},
-  {"en": "I am not the outcome. I am never the result. I am only the effort.", "ru": "Я не исход и не результат. Я — только усилие.", "author": "Kamal Ravikant"},
-  {"en": "Laziness may appear attractive, but work gives satisfaction.", "ru": "Лень может казаться привлекательной, но удовлетворение даёт труд.", "author": "Anne Frank"},
-  {"en": "It is easier to stay out than get out.", "ru": "Не влезть проще, чем выбраться.", "author": "Mark Twain"},
-  {"en": "Once we accept our limits, we go beyond them.", "ru": "Приняв свои пределы, мы выходим за них.", "author": "Albert Einstein"},
-  {"en": "Imagination is more important than knowledge.", "ru": "Воображение важнее знания.", "author": "Albert Einstein"},
-  {"en": "Without music, life would be a mistake.", "ru": "Без музыки жизнь была бы ошибкой.", "author": "Friedrich Nietzsche"},
-  {"en": "What doesn't kill us makes us stronger.", "ru": "Что нас не убивает, делает нас сильнее.", "author": "Friedrich Nietzsche"},
-  {"en": "A penny saved is a penny earned.", "ru": "Сбережённый пенни — заработанный пенни.", "author": "Benjamin Franklin"},
-  {"en": "He that rises late must trot all day.", "ru": "Кто поздно встаёт, тому весь день бежать рысью.", "author": "Benjamin Franklin"},
-  {"en": "Never, never, never give up.", "ru": "Никогда, никогда, никогда не сдавайтесь.", "author": "Winston Churchill"},
-  {"en": "The price of greatness is responsibility.", "ru": "Цена величия — ответственность.", "author": "Winston Churchill"},
-  {"en": "There is no darkness but ignorance.", "ru": "Нет тьмы, кроме невежества.", "author": "William Shakespeare"},
-  {"en": "No legacy is so rich as honesty.", "ru": "Нет наследства богаче честности.", "author": "William Shakespeare"},
-  {"en": "To love is to act.", "ru": "Любить — значит действовать.", "author": "Victor Hugo"},
-  {"en": "People do not lack strength; they lack will.", "ru": "Людям не хватает не силы, а воли.", "author": "Victor Hugo"},
-  {"en": "I know of only one duty, and that is to love.", "ru": "Я знаю только один долг — любить.", "author": "Albert Camus"},
-  {"en": "Should I kill myself, or have a cup of coffee?", "ru": "Покончить с собой или выпить чашечку кофе?", "author": "Albert Camus"},
-  {"en": "You cannot create experience. You must undergo it.", "ru": "Опыт нельзя создать. Его нужно пережить.", "author": "Albert Camus"},
-  {"en": "Never mistake motion for action.", "ru": "Никогда не путай движение с действием.", "author": "Ernest Hemingway"},
-  {"en": "Courage is grace under pressure.", "ru": "Мужество — это изящество под давлением.", "author": "Ernest Hemingway"},
-  {"en": "Learning never exhausts the mind.", "ru": "Учёба никогда не истощает ум.", "author": "Leonardo da Vinci"},
-  {"en": "A well-spent day brings happy sleep.", "ru": "Хорошо проведённый день приносит счастливый сон.", "author": "Leonardo da Vinci"},
-  {"en": "Life well spent is long.", "ru": "Хорошо прожитая жизнь — долгая жизнь.", "author": "Leonardo da Vinci"},
-  {"en": "Wherever you go, go with all your heart.", "ru": "Куда бы ты ни шёл, иди всем сердцем.", "author": "Confucius"},
-  {"en": "The cautious seldom err.", "ru": "Осторожный редко ошибается.", "author": "Confucius"},
-  {"en": "We are what we believe we are.", "ru": "Мы — те, кем себя считаем.", "author": "C. S. Lewis"},
-  {"en": "The only way to do great work is to love what you do.", "ru": "Единственный способ делать великие дела — любить то, что делаешь.", "author": "Steve Jobs"},
-  {"en": "Stay hungry, stay foolish.", "ru": "Оставайтесь голодными, оставайтесь безрассудными.", "author": "Steve Jobs"},
-  {"en": "The best time to plant a tree was twenty years ago. The second best time is now.", "ru": "Лучшее время посадить дерево было двадцать лет назад. Следующее лучшее время — сейчас.", "author": "Chinese Proverb"},
-  {"en": "A journey of a thousand miles begins with a single step.", "ru": "Путь в тысячу ли начинается с первого шага.", "author": "Lao Tzu"},
-  {"en": "Simplicity is the ultimate sophistication.", "ru": "Простота — высшая степень изысканности.", "author": "Leonardo da Vinci"},
-  {"en": "Well done is better than well said.", "ru": "Хорошо сделанное лучше хорошо сказанного.", "author": "Benjamin Franklin"},
-  {"en": "It does not matter how slowly you go as long as you do not stop.", "ru": "Неважно, как медленно ты идёшь, главное — не останавливаться.", "author": "Confucius"},
-  {"en": "Waste no more time arguing what a good man should be. Be one.", "ru": "Хватит спорить о том, каким должен быть хороший человек. Будь им.", "author": "Marcus Aurelius"},
-  {"en": "The impediment to action advances action. What stands in the way becomes the way.", "ru": "Препятствие к действию продвигает действие. То, что стоит на пути, становится путём.", "author": "Marcus Aurelius"},
-  {"en": "We suffer more often in imagination than in reality.", "ru": "Мы чаще страдаем в воображении, чем в действительности.", "author": "Seneca"},
-  {"en": "Luck is what happens when preparation meets opportunity.", "ru": "Удача — это когда подготовка встречается с возможностью.", "author": "Seneca"},
-  {"en": "He who has a why to live can bear almost any how.", "ru": "Тот, кто знает, зачем жить, вынесет почти любое как.", "author": "Friedrich Nietzsche"},
-  {"en": "The unexamined life is not worth living.", "ru": "Жизнь без осмысления не стоит того, чтобы её жить.", "author": "Socrates"},
-  {"en": "Whether you think you can, or you think you can't — you're right.", "ru": "Думаете ли вы, что сможете, или думаете, что не сможете, — вы правы.", "author": "Henry Ford"},
-  {"en": "Done is better than perfect.", "ru": "Сделанное лучше идеального.", "author": "Sheryl Sandberg"},
-  {"en": "Talk is cheap. Show me the code.", "ru": "Болтать легко. Покажи код.", "author": "Linus Torvalds"},
-  {"en": "Everything you've ever wanted is on the other side of fear.", "ru": "Всё, чего ты когда-либо хотел, находится по ту сторону страха.", "author": "George Addair"}
+ {
+  "text": "Opportunities multiply as they are seized.",
+  "lang": "en",
+  "author": "Sun Tzu",
+  "tr": {
+   "ru": "Возможности умножаются, когда их хватают."
+  }
+ },
+ {
+  "text": "Do something. If it works, do more of it. If it doesn't, do something else.",
+  "lang": "en",
+  "author": "Franklin D. Roosevelt",
+  "tr": {
+   "ru": "Делайте что-нибудь. Если получается — делайте больше. Если нет — делайте что-то другое."
+  }
+ },
+ {
+  "text": "A minute's success pays the failure of years.",
+  "lang": "en",
+  "author": "Robert Browning",
+  "tr": {
+   "ru": "Минута успеха окупает годы неудач."
+  }
+ },
+ {
+  "text": "The more you know, the more you know you don't know.",
+  "lang": "en",
+  "author": "Aristotle",
+  "tr": {
+   "ru": "Чем больше знаешь, тем больше понимаешь, что ничего не знаешь."
+  }
+ },
+ {
+  "text": "Don't be pushed around by the fears in your mind. Be led by the dreams in your heart.",
+  "lang": "en",
+  "author": "Roy T. Bennett",
+  "tr": {
+   "ru": "Не позволяй страхам в голове управлять тобой. Пусть ведут мечты в сердце."
+  }
+ },
+ {
+  "text": "We become brave by doing brave acts.",
+  "lang": "en",
+  "author": "Aristotle",
+  "tr": {
+   "ru": "Мы становимся смелыми, совершая смелые поступки."
+  }
+ },
+ {
+  "text": "Sometimes success isn't about making the right decision, it's about making some decision.",
+  "lang": "en",
+  "author": "Robin Sharma",
+  "tr": {
+   "ru": "Иногда успех не в том, чтобы принять правильное решение, а в том, чтобы принять хоть какое-то."
+  }
+ },
+ {
+  "text": "Open your eyes and look within. Are you satisfied with the life you're living?",
+  "lang": "en",
+  "author": "Bob Marley",
+  "tr": {
+   "ru": "Открой глаза и загляни внутрь. Тебя устраивает жизнь, которой ты живёшь?"
+  }
+ },
+ {
+  "text": "You can't build a reputation on what you are going to do.",
+  "lang": "en",
+  "author": "Henry Ford",
+  "tr": {
+   "ru": "Репутацию не построить на том, что только собираешься сделать."
+  }
+ },
+ {
+  "text": "You may be disappointed if you fail, but you are doomed if you don't try.",
+  "lang": "en",
+  "author": "Beverly Sills",
+  "tr": {
+   "ru": "Неудача может разочаровать, но если не пробовать — ты обречён."
+  }
+ },
+ {
+  "text": "If you correct your mind, the rest of your life will fall into place.",
+  "lang": "en",
+  "author": "Lao Tzu",
+  "tr": {
+   "ru": "Приведи в порядок свой ум — и остальная жизнь встанет на место."
+  }
+ },
+ {
+  "text": "So we beat on, boats against the current, borne back ceaselessly into the past.",
+  "lang": "en",
+  "author": "F. Scott Fitzgerald",
+  "tr": {
+   "ru": "Так мы и пытаемся плыть вперёд, борясь с течением, а оно всё сносит и сносит наши суденышки обратно в прошлое."
+  }
+ },
+ {
+  "text": "The important thing is not what one is born with but what use one makes of that equipment.",
+  "lang": "en",
+  "author": "Alfred Adler",
+  "tr": {
+   "ru": "Важно не то, с чем человек родился, а то, как он этим распорядится."
+  }
+ },
+ {
+  "text": "You are the average of the five people you spend most time with.",
+  "lang": "en",
+  "author": "Jim Rohn",
+  "tr": {
+   "ru": "Ты — среднее арифметическое пяти людей, с которыми проводишь больше всего времени."
+  }
+ },
+ {
+  "text": "Don't give up on your dreams, or your dreams will give up on you.",
+  "lang": "en",
+  "author": "John Wooden",
+  "tr": {
+   "ru": "Не отказывайся от своей мечты, иначе она откажется от тебя."
+  }
+ },
+ {
+  "text": "Dark times lie ahead of us and there will be a time when we must choose between what is easy and what is right.",
+  "lang": "en",
+  "author": "Albus Dumbledore",
+  "tr": {
+   "ru": "Впереди тёмные времена, и настанет час, когда придётся выбирать между тем, что легко, и тем, что правильно."
+  }
+ },
+ {
+  "text": "Trying to define yourself is like trying to bite your own teeth.",
+  "lang": "en",
+  "author": "Zen Proverb",
+  "tr": {
+   "ru": "Пытаться определить себя — всё равно что пытаться укусить собственные зубы."
+  }
+ },
+ {
+  "text": "Rest in reason; move in passion.",
+  "lang": "en",
+  "author": "Kahlil Gibran",
+  "tr": {
+   "ru": "Отдыхай в разуме, двигайся в страсти."
+  }
+ },
+ {
+  "text": "We can have more than we've got because we can become more than we are.",
+  "lang": "en",
+  "author": "Jim Rohn",
+  "tr": {
+   "ru": "Мы можем иметь больше, чем имеем, потому что можем стать больше, чем мы есть."
+  }
+ },
+ {
+  "text": "In the end, it's not the years in your life that count. It's the life in your years.",
+  "lang": "en",
+  "author": "Abraham Lincoln",
+  "tr": {
+   "ru": "В конце концов важны не годы в твоей жизни, а жизнь в твоих годах."
+  }
+ },
+ {
+  "text": "To be prepared is half the victory.",
+  "lang": "en",
+  "author": "Miguel de Cervantes",
+  "tr": {
+   "ru": "Быть готовым — уже половина победы."
+  }
+ },
+ {
+  "text": "It always started with a dream.",
+  "lang": "en",
+  "author": "Conrad Hilton",
+  "tr": {
+   "ru": "Всё всегда начиналось с мечты."
+  }
+ },
+ {
+  "text": "See what you're doing wrong, laugh at it, change and do better.",
+  "lang": "en",
+  "author": "Spencer Johnson",
+  "tr": {
+   "ru": "Заметь, что делаешь не так, посмейся над этим, измени и сделай лучше."
+  }
+ },
+ {
+  "text": "Bloom where you are planted.",
+  "lang": "en",
+  "author": "Mary Engelbreit",
+  "tr": {
+   "ru": "Цвети там, где тебя посадили."
+  }
+ },
+ {
+  "text": "Play your part in life, but never forget that it is only a role.",
+  "lang": "en",
+  "author": "Paramahansa Yogananda",
+  "tr": {
+   "ru": "Играй свою партию в жизни, но не забывай, что это лишь роль."
+  }
+ },
+ {
+  "text": "Instead of being intimidated by the limitations, be inspired to find new ways around them.",
+  "lang": "en",
+  "author": "Ralph Marston",
+  "tr": {
+   "ru": "Не пугайся ограничений — пусть они вдохновляют искать новые пути в обход."
+  }
+ },
+ {
+  "text": "Growth comes at the point of resistance.",
+  "lang": "en",
+  "author": "Josh Waitzkin",
+  "tr": {
+   "ru": "Рост начинается там, где появляется сопротивление."
+  }
+ },
+ {
+  "text": "Blessings and burdens are not mutually exclusive.",
+  "lang": "en",
+  "author": "Ryan Holiday",
+  "tr": {
+   "ru": "Благо и бремя не исключают друг друга."
+  }
+ },
+ {
+  "text": "Against the assault of laughter nothing can stand.",
+  "lang": "en",
+  "author": "Mark Twain",
+  "tr": {
+   "ru": "Против натиска смеха ничто не устоит."
+  }
+ },
+ {
+  "text": "If you love life, don't waste time, for time is what life is made up of.",
+  "lang": "en",
+  "author": "Bruce Lee",
+  "tr": {
+   "ru": "Если любишь жизнь — не трать время зря, ведь жизнь из него и состоит."
+  }
+ },
+ {
+  "text": "A loving heart is the truest wisdom.",
+  "lang": "en",
+  "author": "Charles Dickens",
+  "tr": {
+   "ru": "Любящее сердце — самая истинная мудрость."
+  }
+ },
+ {
+  "text": "We become what we believe.",
+  "lang": "en",
+  "author": "Lolly Daskal",
+  "tr": {
+   "ru": "Мы становимся тем, во что верим."
+  }
+ },
+ {
+  "text": "Nothing is too high for a man to reach, but he must climb with care and confidence.",
+  "lang": "en",
+  "author": "Hans Christian Andersen",
+  "tr": {
+   "ru": "Нет вершины, недоступной человеку, но взбираться нужно осторожно и уверенно."
+  }
+ },
+ {
+  "text": "You become what you think about.",
+  "lang": "en",
+  "author": "Earl Nightingale",
+  "tr": {
+   "ru": "Ты становишься тем, о чём думаешь."
+  }
+ },
+ {
+  "text": "Be fascinated instead of frustrated.",
+  "lang": "en",
+  "author": "Jim Rohn",
+  "tr": {
+   "ru": "Восхищайся, а не раздражайся."
+  }
+ },
+ {
+  "text": "When you've got nothing, you've got nothing to lose.",
+  "lang": "en",
+  "author": "Bob Dylan",
+  "tr": {
+   "ru": "Когда у тебя ничего нет, тебе нечего терять."
+  }
+ },
+ {
+  "text": "All we have to decide is what to do with the time that is given to us.",
+  "lang": "en",
+  "author": "J.R.R. Tolkien",
+  "tr": {
+   "ru": "Нам решать лишь одно — что делать с отпущенным нам временем."
+  }
+ },
+ {
+  "text": "I am not the outcome. I am never the result. I am only the effort.",
+  "lang": "en",
+  "author": "Kamal Ravikant",
+  "tr": {
+   "ru": "Я не исход и не результат. Я — только усилие."
+  }
+ },
+ {
+  "text": "Laziness may appear attractive, but work gives satisfaction.",
+  "lang": "en",
+  "author": "Anne Frank",
+  "tr": {
+   "ru": "Лень может казаться привлекательной, но удовлетворение даёт труд."
+  }
+ },
+ {
+  "text": "It is easier to stay out than get out.",
+  "lang": "en",
+  "author": "Mark Twain",
+  "tr": {
+   "ru": "Не влезть проще, чем выбраться."
+  }
+ },
+ {
+  "text": "Once we accept our limits, we go beyond them.",
+  "lang": "en",
+  "author": "Albert Einstein",
+  "tr": {
+   "ru": "Приняв свои пределы, мы выходим за них."
+  }
+ },
+ {
+  "text": "Imagination is more important than knowledge.",
+  "lang": "en",
+  "author": "Albert Einstein",
+  "tr": {
+   "ru": "Воображение важнее знания."
+  }
+ },
+ {
+  "text": "Without music, life would be a mistake.",
+  "lang": "en",
+  "author": "Friedrich Nietzsche",
+  "tr": {
+   "ru": "Без музыки жизнь была бы ошибкой."
+  }
+ },
+ {
+  "text": "What doesn't kill us makes us stronger.",
+  "lang": "en",
+  "author": "Friedrich Nietzsche",
+  "tr": {
+   "ru": "Что нас не убивает, делает нас сильнее."
+  }
+ },
+ {
+  "text": "A penny saved is a penny earned.",
+  "lang": "en",
+  "author": "Benjamin Franklin",
+  "tr": {
+   "ru": "Сбережённый пенни — заработанный пенни."
+  }
+ },
+ {
+  "text": "He that rises late must trot all day.",
+  "lang": "en",
+  "author": "Benjamin Franklin",
+  "tr": {
+   "ru": "Кто поздно встаёт, тому весь день бежать рысью."
+  }
+ },
+ {
+  "text": "Never, never, never give up.",
+  "lang": "en",
+  "author": "Winston Churchill",
+  "tr": {
+   "ru": "Никогда, никогда, никогда не сдавайтесь."
+  }
+ },
+ {
+  "text": "The price of greatness is responsibility.",
+  "lang": "en",
+  "author": "Winston Churchill",
+  "tr": {
+   "ru": "Цена величия — ответственность."
+  }
+ },
+ {
+  "text": "There is no darkness but ignorance.",
+  "lang": "en",
+  "author": "William Shakespeare",
+  "tr": {
+   "ru": "Нет тьмы, кроме невежества."
+  }
+ },
+ {
+  "text": "No legacy is so rich as honesty.",
+  "lang": "en",
+  "author": "William Shakespeare",
+  "tr": {
+   "ru": "Нет наследства богаче честности."
+  }
+ },
+ {
+  "text": "To love is to act.",
+  "lang": "en",
+  "author": "Victor Hugo",
+  "tr": {
+   "ru": "Любить — значит действовать."
+  }
+ },
+ {
+  "text": "People do not lack strength; they lack will.",
+  "lang": "en",
+  "author": "Victor Hugo",
+  "tr": {
+   "ru": "Людям не хватает не силы, а воли."
+  }
+ },
+ {
+  "text": "I know of only one duty, and that is to love.",
+  "lang": "en",
+  "author": "Albert Camus",
+  "tr": {
+   "ru": "Я знаю только один долг — любить."
+  }
+ },
+ {
+  "text": "Should I kill myself, or have a cup of coffee?",
+  "lang": "en",
+  "author": "Albert Camus",
+  "tr": {
+   "ru": "Покончить с собой или выпить чашечку кофе?"
+  }
+ },
+ {
+  "text": "You cannot create experience. You must undergo it.",
+  "lang": "en",
+  "author": "Albert Camus",
+  "tr": {
+   "ru": "Опыт нельзя создать. Его нужно пережить."
+  }
+ },
+ {
+  "text": "Never mistake motion for action.",
+  "lang": "en",
+  "author": "Ernest Hemingway",
+  "tr": {
+   "ru": "Никогда не путай движение с действием."
+  }
+ },
+ {
+  "text": "Courage is grace under pressure.",
+  "lang": "en",
+  "author": "Ernest Hemingway",
+  "tr": {
+   "ru": "Мужество — это изящество под давлением."
+  }
+ },
+ {
+  "text": "Learning never exhausts the mind.",
+  "lang": "en",
+  "author": "Leonardo da Vinci",
+  "tr": {
+   "ru": "Учёба никогда не истощает ум."
+  }
+ },
+ {
+  "text": "A well-spent day brings happy sleep.",
+  "lang": "en",
+  "author": "Leonardo da Vinci",
+  "tr": {
+   "ru": "Хорошо проведённый день приносит счастливый сон."
+  }
+ },
+ {
+  "text": "Life well spent is long.",
+  "lang": "en",
+  "author": "Leonardo da Vinci",
+  "tr": {
+   "ru": "Хорошо прожитая жизнь — долгая жизнь."
+  }
+ },
+ {
+  "text": "Wherever you go, go with all your heart.",
+  "lang": "en",
+  "author": "Confucius",
+  "tr": {
+   "ru": "Куда бы ты ни шёл, иди всем сердцем."
+  }
+ },
+ {
+  "text": "The cautious seldom err.",
+  "lang": "en",
+  "author": "Confucius",
+  "tr": {
+   "ru": "Осторожный редко ошибается."
+  }
+ },
+ {
+  "text": "We are what we believe we are.",
+  "lang": "en",
+  "author": "C. S. Lewis",
+  "tr": {
+   "ru": "Мы — те, кем себя считаем."
+  }
+ },
+ {
+  "text": "The only way to do great work is to love what you do.",
+  "lang": "en",
+  "author": "Steve Jobs",
+  "tr": {
+   "ru": "Единственный способ делать великие дела — любить то, что делаешь."
+  }
+ },
+ {
+  "text": "Stay hungry, stay foolish.",
+  "lang": "en",
+  "author": "Steve Jobs",
+  "tr": {
+   "ru": "Оставайтесь голодными, оставайтесь безрассудными."
+  }
+ },
+ {
+  "text": "The best time to plant a tree was twenty years ago. The second best time is now.",
+  "lang": "en",
+  "author": "Chinese Proverb",
+  "tr": {
+   "ru": "Лучшее время посадить дерево было двадцать лет назад. Следующее лучшее время — сейчас."
+  }
+ },
+ {
+  "text": "A journey of a thousand miles begins with a single step.",
+  "lang": "en",
+  "author": "Lao Tzu",
+  "tr": {
+   "ru": "Путь в тысячу ли начинается с первого шага."
+  }
+ },
+ {
+  "text": "Simplicity is the ultimate sophistication.",
+  "lang": "en",
+  "author": "Leonardo da Vinci",
+  "tr": {
+   "ru": "Простота — высшая степень изысканности."
+  }
+ },
+ {
+  "text": "Well done is better than well said.",
+  "lang": "en",
+  "author": "Benjamin Franklin",
+  "tr": {
+   "ru": "Хорошо сделанное лучше хорошо сказанного."
+  }
+ },
+ {
+  "text": "It does not matter how slowly you go as long as you do not stop.",
+  "lang": "en",
+  "author": "Confucius",
+  "tr": {
+   "ru": "Неважно, как медленно ты идёшь, главное — не останавливаться."
+  }
+ },
+ {
+  "text": "Waste no more time arguing what a good man should be. Be one.",
+  "lang": "en",
+  "author": "Marcus Aurelius",
+  "tr": {
+   "ru": "Хватит спорить о том, каким должен быть хороший человек. Будь им."
+  }
+ },
+ {
+  "text": "The impediment to action advances action. What stands in the way becomes the way.",
+  "lang": "en",
+  "author": "Marcus Aurelius",
+  "tr": {
+   "ru": "Препятствие к действию продвигает действие. То, что стоит на пути, становится путём."
+  }
+ },
+ {
+  "text": "We suffer more often in imagination than in reality.",
+  "lang": "en",
+  "author": "Seneca",
+  "tr": {
+   "ru": "Мы чаще страдаем в воображении, чем в действительности."
+  }
+ },
+ {
+  "text": "Luck is what happens when preparation meets opportunity.",
+  "lang": "en",
+  "author": "Seneca",
+  "tr": {
+   "ru": "Удача — это когда подготовка встречается с возможностью."
+  }
+ },
+ {
+  "text": "He who has a why to live can bear almost any how.",
+  "lang": "en",
+  "author": "Friedrich Nietzsche",
+  "tr": {
+   "ru": "Тот, кто знает, зачем жить, вынесет почти любое как."
+  }
+ },
+ {
+  "text": "The unexamined life is not worth living.",
+  "lang": "en",
+  "author": "Socrates",
+  "tr": {
+   "ru": "Жизнь без осмысления не стоит того, чтобы её жить."
+  }
+ },
+ {
+  "text": "Whether you think you can, or you think you can't — you're right.",
+  "lang": "en",
+  "author": "Henry Ford",
+  "tr": {
+   "ru": "Думаете ли вы, что сможете, или думаете, что не сможете, — вы правы."
+  }
+ },
+ {
+  "text": "Done is better than perfect.",
+  "lang": "en",
+  "author": "Sheryl Sandberg",
+  "tr": {
+   "ru": "Сделанное лучше идеального."
+  }
+ },
+ {
+  "text": "Talk is cheap. Show me the code.",
+  "lang": "en",
+  "author": "Linus Torvalds",
+  "tr": {
+   "ru": "Болтать легко. Покажи код."
+  }
+ },
+ {
+  "text": "Everything you've ever wanted is on the other side of fear.",
+  "lang": "en",
+  "author": "George Addair",
+  "tr": {
+   "ru": "Всё, чего ты когда-либо хотел, находится по ту сторону страха."
+  }
+ },
+ {
+  "text": "七転び八起き",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Fall seven times, stand up eight.",
+   "ru": "Упади семь раз — поднимись восемь."
+  }
+ },
+ {
+  "text": "猿も木から落ちる",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Even monkeys fall from trees.",
+   "ru": "И обезьяна падает с дерева."
+  }
+ },
+ {
+  "text": "石の上にも三年",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Three years on a stone, and even a stone grows warm.",
+   "ru": "Три года сиди на камне — и камень согреется."
+  }
+ },
+ {
+  "text": "一期一会",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "One time, one meeting — treasure every encounter.",
+   "ru": "Одна жизнь — одна встреча: цени каждую."
+  }
+ },
+ {
+  "text": "継続は力なり",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Persistence is power.",
+   "ru": "Упорство — это сила."
+  }
+ },
+ {
+  "text": "急がば回れ",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "If you are in a hurry, go the long way round.",
+   "ru": "Тише едешь — дальше будешь."
+  }
+ },
+ {
+  "text": "雨降って地固まる",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "After the rain, the ground grows firm.",
+   "ru": "После дождя земля становится твёрже."
+  }
+ },
+ {
+  "text": "出る杭は打たれる",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "The nail that sticks out gets hammered down.",
+   "ru": "Торчащий гвоздь забивают."
+  }
+ },
+ {
+  "text": "花より団子",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Dumplings rather than flowers.",
+   "ru": "Лучше данго, чем цветы."
+  }
+ },
+ {
+  "text": "知らぬが仏",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Not knowing is being a Buddha: ignorance is bliss.",
+   "ru": "Не знаешь — и спокоен, как Будда."
+  }
+ },
+ {
+  "text": "千里の道も一歩から",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Even a thousand-ri journey begins with a single step.",
+   "ru": "Путь в тысячу ри начинается с одного шага."
+  }
+ },
+ {
+  "text": "失敗は成功のもと",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Failure is the seed of success.",
+   "ru": "Неудача — основа успеха."
+  }
+ },
+ {
+  "text": "案ずるより産むが易し",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Doing it is easier than worrying about it.",
+   "ru": "Сделать легче, чем бояться."
+  }
+ },
+ {
+  "text": "時は金なり",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Time is money.",
+   "ru": "Время — деньги."
+  }
+ },
+ {
+  "text": "能ある鷹は爪を隠す",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "The skilled hawk hides its talons.",
+   "ru": "Умелый ястреб прячет когти."
+  }
+ },
+ {
+  "text": "井の中の蛙大海を知らず",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "A frog in a well knows nothing of the great ocean.",
+   "ru": "Лягушка в колодце не знает о великом океане."
+  }
+ },
+ {
+  "text": "笑う門には福来る",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "Fortune comes to the house where people laugh.",
+   "ru": "Счастье приходит в дом, где смеются."
+  }
+ },
+ {
+  "text": "一石二鳥",
+  "lang": "ja",
+  "author": "Japanese proverb",
+  "tr": {
+   "en": "One stone, two birds.",
+   "ru": "Одним камнем — двух птиц."
+  }
+ },
+ {
+  "text": "古池や蛙飛びこむ水の音",
+  "lang": "ja",
+  "author": "Matsuo Bashō",
+  "tr": {
+   "en": "An old pond — a frog jumps in, the sound of water.",
+   "ru": "Старый пруд. Прыгнула в воду лягушка. Всплеск в тишине."
+  }
+ },
+ {
+  "text": "千日の稽古を鍛とし、万日の稽古を錬とす",
+  "lang": "ja",
+  "author": "Miyamoto Musashi",
+  "tr": {
+   "en": "A thousand days of practice to forge, ten thousand days to polish.",
+   "ru": "Тысяча дней тренировок — чтобы закалить, десять тысяч — чтобы отточить."
+  }
+ },
+ {
+  "text": "Je pense, donc je suis.",
+  "lang": "fr",
+  "author": "René Descartes",
+  "tr": {
+   "en": "I think, therefore I am.",
+   "ru": "Я мыслю, следовательно, существую."
+  }
+ },
+ {
+  "text": "On ne voit bien qu'avec le cœur. L'essentiel est invisible pour les yeux.",
+  "lang": "fr",
+  "author": "Antoine de Saint-Exupéry",
+  "tr": {
+   "en": "One sees clearly only with the heart. What is essential is invisible to the eye.",
+   "ru": "Зорко одно лишь сердце. Самого главного глазами не увидишь."
+  }
+ },
+ {
+  "text": "Il faut cultiver notre jardin.",
+  "lang": "fr",
+  "author": "Voltaire",
+  "tr": {
+   "en": "We must cultivate our garden.",
+   "ru": "Надо возделывать свой сад."
+  }
+ },
+ {
+  "text": "Le cœur a ses raisons que la raison ne connaît point.",
+  "lang": "fr",
+  "author": "Blaise Pascal",
+  "tr": {
+   "en": "The heart has its reasons which reason knows nothing of.",
+   "ru": "У сердца есть свои доводы, которых разум не знает."
+  }
+ },
+ {
+  "text": "Was mich nicht umbringt, macht mich stärker.",
+  "lang": "de",
+  "author": "Friedrich Nietzsche",
+  "tr": {
+   "en": "What does not kill me makes me stronger.",
+   "ru": "Что меня не убивает, делает меня сильнее."
+  }
+ },
+ {
+  "text": "Wer nicht wagt, der nicht gewinnt.",
+  "lang": "de",
+  "author": "German proverb",
+  "tr": {
+   "en": "Nothing ventured, nothing gained.",
+   "ru": "Кто не рискует, тот не выигрывает."
+  }
+ },
+ {
+  "text": "Es irrt der Mensch, solang er strebt.",
+  "lang": "de",
+  "author": "Johann Wolfgang von Goethe",
+  "tr": {
+   "en": "Man errs as long as he strives.",
+   "ru": "Блуждает человек, пока в нём есть стремленье."
+  }
+ },
+ {
+  "text": "Die Grenzen meiner Sprache bedeuten die Grenzen meiner Welt.",
+  "lang": "de",
+  "author": "Ludwig Wittgenstein",
+  "tr": {
+   "en": "The limits of my language mean the limits of my world.",
+   "ru": "Границы моего языка означают границы моего мира."
+  }
+ },
+ {
+  "text": "Caminante, no hay camino, se hace camino al andar.",
+  "lang": "es",
+  "author": "Antonio Machado",
+  "tr": {
+   "en": "Traveller, there is no road; the road is made by walking.",
+   "ru": "Путник, дороги нет — дорога появляется, когда идёшь."
+  }
+ },
+ {
+  "text": "La vida es sueño.",
+  "lang": "es",
+  "author": "Pedro Calderón de la Barca",
+  "tr": {
+   "en": "Life is a dream.",
+   "ru": "Жизнь есть сон."
+  }
+ },
+ {
+  "text": "Chi va piano va sano e va lontano.",
+  "lang": "it",
+  "author": "Italian proverb",
+  "tr": {
+   "en": "Who goes slowly goes safely and goes far.",
+   "ru": "Тише едешь — дальше будешь."
+  }
+ },
+ {
+  "text": "Fatti non foste a viver come bruti, ma per seguir virtute e canoscenza.",
+  "lang": "it",
+  "author": "Dante Alighieri",
+  "tr": {
+   "en": "You were not made to live like brutes, but to follow virtue and knowledge.",
+   "ru": "Вы созданы не для животной доли, но к доблести и к знанью рождены."
+  }
+ },
+ {
+  "text": "Carpe diem.",
+  "lang": "la",
+  "author": "Horace",
+  "tr": {
+   "en": "Seize the day.",
+   "ru": "Лови день."
+  }
+ },
+ {
+  "text": "Memento mori.",
+  "lang": "la",
+  "author": "Latin saying",
+  "tr": {
+   "en": "Remember that you will die.",
+   "ru": "Помни о смерти."
+  }
+ },
+ {
+  "text": "Per aspera ad astra.",
+  "lang": "la",
+  "author": "Latin saying",
+  "tr": {
+   "en": "Through hardships to the stars.",
+   "ru": "Через тернии к звёздам."
+  }
+ },
+ {
+  "text": "Veni, vidi, vici.",
+  "lang": "la",
+  "author": "Julius Caesar",
+  "tr": {
+   "en": "I came, I saw, I conquered.",
+   "ru": "Пришёл, увидел, победил."
+  }
+ },
+ {
+  "text": "Dum spiro, spero.",
+  "lang": "la",
+  "author": "Latin saying",
+  "tr": {
+   "en": "While I breathe, I hope.",
+   "ru": "Пока дышу — надеюсь."
+  }
+ },
+ {
+  "text": "Amor fati.",
+  "lang": "la",
+  "author": "Friedrich Nietzsche",
+  "tr": {
+   "en": "Love of fate.",
+   "ru": "Любовь к судьбе."
+  }
+ },
+ {
+  "text": "千里之行，始于足下。",
+  "lang": "zh",
+  "author": "Lao Tzu",
+  "tr": {
+   "en": "A journey of a thousand miles begins beneath one's feet.",
+   "ru": "Путь в тысячу ли начинается под ногами."
+  }
+ },
+ {
+  "text": "学而不思则罔，思而不学则殆。",
+  "lang": "zh",
+  "author": "Confucius",
+  "tr": {
+   "en": "Learning without thinking is lost; thinking without learning is perilous.",
+   "ru": "Учиться и не размышлять — напрасный труд; размышлять и не учиться — опасно."
+  }
+ },
+ {
+  "text": "知之为知之，不知为不知，是知也。",
+  "lang": "zh",
+  "author": "Confucius",
+  "tr": {
+   "en": "To know what you know and to know what you do not know — that is knowledge.",
+   "ru": "Знать, что знаешь, и знать, чего не знаешь, — вот истинное знание."
+  }
+ },
+ {
+  "text": "시작이 반이다.",
+  "lang": "ko",
+  "author": "Korean proverb",
+  "tr": {
+   "en": "Starting is half the work.",
+   "ru": "Начало — половина дела."
+  }
+ },
+ {
+  "text": "가는 말이 고와야 오는 말이 곱다.",
+  "lang": "ko",
+  "author": "Korean proverb",
+  "tr": {
+   "en": "Kind words go out, kind words come back.",
+   "ru": "Как аукнется, так и откликнется."
+  }
+ },
+ {
+  "text": "Красота спасёт мир.",
+  "lang": "ru",
+  "author": "Fyodor Dostoevsky",
+  "tr": {
+   "en": "Beauty will save the world."
+  }
+ },
+ {
+  "text": "Рукописи не горят.",
+  "lang": "ru",
+  "author": "Mikhail Bulgakov",
+  "tr": {
+   "en": "Manuscripts don't burn."
+  }
+ },
+ {
+  "text": "Счастье не в том, чтобы делать всегда, что хочешь, а в том, чтобы всегда хотеть того, что делаешь.",
+  "lang": "ru",
+  "author": "Leo Tolstoy",
+  "tr": {
+   "en": "Happiness lies not in always doing what you want, but in always wanting what you do."
+  }
+ },
+ {
+  "text": "Тише едешь — дальше будешь.",
+  "lang": "ru",
+  "author": "Russian proverb",
+  "tr": {
+   "en": "The slower you go, the farther you will get."
+  }
+ },
+ {
+  "text": "Πάντα ῥεῖ.",
+  "lang": "el",
+  "author": "Heraclitus",
+  "tr": {
+   "en": "Everything flows.",
+   "ru": "Всё течёт."
+  }
+ },
+ {
+  "text": "Γνῶθι σεαυτόν.",
+  "lang": "el",
+  "author": "Delphic maxim",
+  "tr": {
+   "en": "Know thyself.",
+   "ru": "Познай самого себя."
+  }
+ },
+ {
+  "text": "Tudo vale a pena se a alma não é pequena.",
+  "lang": "pt",
+  "author": "Fernando Pessoa",
+  "tr": {
+   "en": "Everything is worthwhile if the soul is not small.",
+   "ru": "Всё стоит труда, если душа не мелка."
+  }
+ }
 ]

@@ -6,7 +6,8 @@ import "settings.js" as Settings
 
 // A quote on the desktop background, just above the wallpaper
 // (WlrLayer.Bottom) so it never covers the bar, panels or windows: the
-// English original large in blackletter, the Russian translation under it,
+// original (any language) large — blackletter for Latin script — and under
+// it the translation into the language chosen in the settings,
 // then the author. Click-through, except while `editMode` (toggled from the
 // bar widget) lets you drag the card; a click elsewhere ends that.
 //
@@ -51,7 +52,7 @@ Item {
   // ---- the quote ----
   function refresh(force) {
     if (quoteProc.running) return
-    quoteProc.command = force ? [quoteBin, "next"] : [quoteBin, "get", String(cfg.intervalMinutes)]
+    quoteProc.command = force ? [quoteBin, "next", cfg.lang] : [quoteBin, "get", String(cfg.intervalMinutes), cfg.lang]
     quoteProc.running = true
   }
   Process {
@@ -59,7 +60,7 @@ Item {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        try { var q = JSON.parse(text); if (q && q.en) root.quote = q } catch (e) {}
+        try { var q = JSON.parse(text); if (q && (q.text || q.en)) root.quote = q } catch (e) {}
       }
     }
   }
@@ -131,8 +132,10 @@ Item {
         Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
         function applyStoredPosition() {
-          x = Math.max(0, Math.min(panel.width - width, root.cfg.posX * panel.width - width / 2))
-          y = Math.max(0, Math.min(panel.height - height, root.cfg.posY * panel.height - height / 2))
+          // keep a margin from the screen edges (and from a bar or notch)
+          var m = 40
+          x = Math.max(m, Math.min(panel.width - width - m, root.cfg.posX * panel.width - width / 2))
+          y = Math.max(m + 20, Math.min(panel.height - height - m, root.cfg.posY * panel.height - height / 2))
         }
         Component.onCompleted: applyStoredPosition()
         onWidthChanged: if (!dragArea.drag.active) applyStoredPosition()
@@ -162,11 +165,11 @@ Item {
             width: Math.min(implicitWidth, column.maxTextWidth)
             anchors.horizontalCenter: parent.horizontalCenter
             textFormat: Text.PlainText
-            text: root.quote ? root.quote.en : ""
+            text: Settings.topOf(root.quote)
             color: "#ffffff"
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
-            font.family: gothic.name
+            font.family: Settings.fontFor(Settings.langOf(root.quote), gothic.name)
             font.pixelSize: Math.round(34 * panel.s)
             style: Text.Raised
             styleColor: Qt.rgba(0, 0, 0, 0.65)
@@ -177,7 +180,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             textFormat: Text.PlainText
             visible: text !== ""
-            text: root.quote ? (root.quote.ru || "") : ""
+            text: Settings.bottomOf(root.quote, root.cfg.lang)
             color: Qt.rgba(1, 1, 1, 0.86)
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap

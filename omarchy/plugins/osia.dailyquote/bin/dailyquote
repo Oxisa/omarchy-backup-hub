@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """Quote source for the Daily Quote plugin.
 
-  dailyquote get <minutes>   print the current quote; fetch a new one first if
-                             the current is older than <minutes> (or missing)
-  dailyquote next            fetch a new quote now and print it
+  dailyquote get <minutes> [lang]   print the current quote; fetch a new one
+                                    first if it is older than <minutes>
+  dailyquote next [lang]            pick a new quote now and print it
 
-Output is one JSON object: {"en", "ru", "author", "source", "shown_at"}.
+A quote is {"text", "lang", "author", "tr": {lang: translation}, "source",
+"shown_at"}: the original in its own language (any) and translations. [lang]
+(en or ru, default ru) is the language to translate into; the output adds
+"bottom", that translation, empty when the original is already in it.
 
-A new quote comes from one of several sites, tried in random order —
-ZenQuotes (quote of the day, once per day, and random) and DummyJSON
-(random, religious authors skipped) — and is machine-translated to Russian
-(MyMemory, then Google as a fallback). Translated online quotes are kept in
-a local pool. With no network (or no translation) a quote is picked from the
-bundled quotes.json (hand-translated) plus that pool, so the overlay always
-has something bilingual to show. Recent quotes are not repeated.
+A new quote is either from the bundled multilingual set (quotes.json: English,
+Japanese, Latin, French, German, Chinese… with hand-made en/ru translations)
+or from a site — ZenQuotes (quote of the day once a day, and random) or
+DummyJSON (random, religious authors skipped), both English — machine-
+translated (MyMemory, then Google). Translations are cached; fetched quotes
+join a local pool used offline. Recent quotes are not repeated.
 """
 
 import html
@@ -63,8 +65,20 @@ def save(path: Path, data) -> None:
     tmp.replace(path)
 
 
+def normalize(q: dict) -> dict:
+    """Old entries were {"en", "ru"}; now {"text", "lang", "tr"}."""
+    if not isinstance(q, dict):
+        return {}
+    if "text" not in q and q.get("en"):
+        q = {"text": q["en"], "lang": "en", "author": q.get("author", ""), "source": q.get("source", ""),
+             "tr": {"ru": q["ru"]} if q.get("ru") else {}, **({"shown_at": q["shown_at"]} if "shown_at" in q else {})}
+    q.setdefault("lang", "en")
+    q.setdefault("tr", {})
+    return q
+
+
 def key(q: dict) -> str:
-    return "".join(ch for ch in q.get("en", "").lower() if ch.isalnum())[:80]
+    return "".join(ch for ch in str(q.get("text") or q.get("en") or "").lower() if ch.isalnum())[:80]
 
 
 def sentence_case(text: str) -> str:
@@ -110,9 +124,9 @@ SOURCES = [zen_today, zen_random, dummy_random]
 
 # ---- translation -------------------------------------------------------------
 
-def translate(text: str) -> str:
+def translate(text: str, src: str = "en", dst: str = "ru") -> str:
     try:
-        q = urllib.parse.urlencode({"q": text, "langpair": "en|ru"})
+        q = urllib.parse.urlencode({"q": text, "langpair": f"{src}|{dst}"})
         d = http_json("https://api.mymemory.translated.net/get?" + q)
         out = html.unescape(str(d.get("responseData", {}).get("translatedText", ""))).strip()
         if d.get("responseStatus") == 200 and out and "MYMEMORY" not in out.upper() and out != text:
@@ -120,7 +134,7 @@ def translate(text: str) -> str:
     except Exception:
         pass
     try:
-        q = urllib.parse.urlencode({"client": "gtx", "sl": "en", "tl": "ru", "dt": "t", "q": text})
+        q = urllib.parse.urlencode({"client": "gtx", "sl": src, "tl": dst, "dt": "t", "q": text})
         d = http_json("https://translate.googleapis.com/translate_a/single?" + q)
         out = "".join(part[0] for part in d[0] if part and part[0]).strip()
         if out and out != text:
@@ -132,21 +146,27 @@ def translate(text: str) -> str:
 
 # ---- picking ---------------------------------------------------------------
 
-def fetch_online(state: dict, recent: set):
+def all_offline() -> list:
+    return [normalize(q) for q in load(BUNDLED, []) + load(POOL, []) if (q.get("text") or q.get("en"))]
+
+
+def fetch_online(state: dict, recent: set, lang: str):
     order = SOURCES[:1] + random.sample(SOURCES[1:], len(SOURCES) - 1)
     for src in order:
         try:
             q = src(state)
         except Exception:
             q = None
-        if not q or not q["en"] or key(q) in recent:
+        if not q or not q["en"] or key({"text": q["en"]}) in recent:
             continue
-        ru = translate(q["en"])
-        if not ru:
-            return None                                # no translation: use the offline set
-        q["ru"] = ru.replace(" - ", " — ")
+        q = {"text": q["en"], "lang": "en", "author": q["author"], "source": q["source"], "tr": {}}
+        if lang != "en":
+            tr = translate(q["text"], "en", lang)
+            if not tr:
+                return None                            # no translation: use the offline set
+            q["tr"][lang] = tr.replace(" - ", " — ")
         pool = load(POOL, [])
-        if key(q) not in {key(p) for p in pool}:
+        if key(q) not in {key(normalize(p)) for p in pool}:
             pool.append(q)
             save(POOL, pool[-POOL_MAX:])
         return q
@@ -154,19 +174,36 @@ def fetch_online(state: dict, recent: set):
 
 
 def pick_offline(recent: set):
-    items = [q for q in load(BUNDLED, []) + load(POOL, []) if q.get("en") and q.get("ru")]
+    items = all_offline()
     fresh = [q for q in items if key(q) not in recent] or items
     if not fresh:
-        return {"en": "Well done is better than well said.", "ru": "Хорошо сделанное лучше хорошо сказанного.",
-                "author": "Benjamin Franklin"}
+        return {"text": "Well done is better than well said.", "lang": "en", "author": "Benjamin Franklin",
+                "tr": {"ru": "Хорошо сделанное лучше хорошо сказанного."}}
     q = dict(random.choice(fresh))
     q.setdefault("source", "offline")
     return q
 
 
-def new_quote(state: dict) -> dict:
+def ensure_translation(q: dict, lang: str) -> dict:
+    """Make sure q has a translation into lang (unless it is in lang already)."""
+    if lang == q.get("lang") or q["tr"].get(lang):
+        return q
+    for other in all_offline():                         # known from the set or the pool?
+        if key(other) == key(q) and other["tr"].get(lang):
+            q["tr"][lang] = other["tr"][lang]
+            return q
+    tr = translate(q["text"], q.get("lang", "en"), lang)
+    if tr:
+        q["tr"][lang] = tr.replace(" - ", " — ")
+    return q
+
+
+def new_quote(state: dict, lang: str) -> dict:
     recent = set(state.get("recent", []))
-    q = fetch_online(state, recent) or pick_offline(recent)
+    # mix: the multilingual set about half the time, otherwise a site
+    q = None if random.random() < 0.45 else fetch_online(state, recent, lang)
+    q = q or pick_offline(recent)
+    q = ensure_translation(q, lang)
     q["shown_at"] = int(time.time())
     state["recent"] = (state.get("recent", []) + [key(q)])[-RECENT_MAX:]
     state["current"] = q
@@ -174,24 +211,37 @@ def new_quote(state: dict) -> dict:
     return q
 
 
+def output(q: dict, lang: str) -> dict:
+    out = dict(q)
+    out["bottom"] = "" if lang == q.get("lang") else q["tr"].get(lang, "")
+    return out
+
+
 def main() -> int:
     args = sys.argv[1:]
     state = load(CURRENT, {})
     if not isinstance(state, dict):
         state = {}
-    if args[:1] == ["next"]:
-        q = new_quote(state)
-    elif args[:1] == ["get"]:
+    cmd = args[0] if args else ""
+    if cmd == "next":
+        lang = args[1] if len(args) > 1 else "ru"
+        q = new_quote(state, lang)
+    elif cmd == "get":
         minutes = float(args[1]) if len(args) > 1 else 240
-        cur = state.get("current")
-        if cur and time.time() - cur.get("shown_at", 0) < minutes * 60:
-            q = cur
+        lang = args[2] if len(args) > 2 else "ru"
+        cur = normalize(state.get("current") or {})
+        if cur.get("text") and time.time() - cur.get("shown_at", 0) < minutes * 60:
+            had = dict(cur["tr"])
+            q = ensure_translation(cur, lang)
+            if q["tr"] != had:                          # new language: remember the translation
+                state["current"] = q
+                save(CURRENT, state)
         else:
-            q = new_quote(state)
+            q = new_quote(state, lang)
     else:
         print(__doc__, file=sys.stderr)
         return 1
-    print(json.dumps(q, ensure_ascii=False))
+    print(json.dumps(output(q, lang), ensure_ascii=False))
     return 0
 
 
