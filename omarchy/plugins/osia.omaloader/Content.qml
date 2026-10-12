@@ -361,6 +361,7 @@ Column {
         spacing: SH.HubStyle.gap
 
         Section {
+          visible: !(host && host.langOverride)
           title: host ? host.t("sec.interface") : ""; icon: "󰗊"
           SH.HubRow {
             title: host ? host.t("set.language") : ""; fg: contentCol.fg; fontFamily: contentCol.ff

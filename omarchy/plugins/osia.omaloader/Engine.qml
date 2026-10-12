@@ -26,7 +26,9 @@ Item {
   property int tab: 0                   // 0 download | 1 settings
 
   // UI language from the settings tab; English by default.
-  readonly property string lang: String(opt("lang", "en") || "en")
+  // a host with one language for everything (TheNotch) sets langOverride
+  property string langOverride: ""
+  readonly property string lang: langOverride || String(opt("lang", "en") || "en")
   function t(key, args) { return I18n.t(root.lang, key, args) }
 
   // Reads straight from `settings`, so bindings follow persist().

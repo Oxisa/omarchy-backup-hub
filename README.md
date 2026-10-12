@@ -145,3 +145,5 @@ omarchy plugin add https://github.com/Oxisa/TheNotch.git --enable
 
 - Тему refact0r/system24 под цвета текущей темы Omarchy настраивает хук `omarchy/hooks/theme-set.d/system24`. Он ставится через `install.sh`.
 - В `apps/vesktop/vencord-settings.json` лежат включённые плагины Vencord и тема. Переносите только ключи `useQuickCss`, `themeLinks`, `enabledThemes` и `plugins` в `~/.config/vesktop/settings/settings.json`. Целиком файл не заменяйте: в нём хранятся сессии.
+- В `apps/` ещё лежат перекраски приложений под тему Omarchy — omacord (Vesktop/Discord), omasteam (Steam), omatele (Telegram) — для будущих хуков; `install.sh` их не ставит. Там же нет ничего, что ставится автоматически.
+- `omarchy/extras/osia.notifications` — мой демон уведомлений; у TheNotch своя копия, поэтому рядом с ним его не ставить.

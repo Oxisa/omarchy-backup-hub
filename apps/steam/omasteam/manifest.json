@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "osia.omasteam",
+  "name": "omasteam",
+  "version": "1.0.0",
+  "author": "osia",
+  "license": "MIT",
+  "description": "A Millennium theme for the Steam client that follows the active Omarchy desktop theme. Regenerates the theme's colour variables on every theme switch; Millennium hot-reloads them live.",
+  "kinds": ["service"],
+  "entryPoints": { "service": "Service.qml" }
+}

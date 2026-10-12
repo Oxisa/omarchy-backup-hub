@@ -4,6 +4,8 @@
   dailyquote get <minutes> [lang]   print the current quote; fetch a new one
                                     first if it is older than <minutes>
   dailyquote next [lang]            pick a new quote now and print it
+  dailyquote test URL TEXT [AUTHOR] try a custom site: fetch URL, read TEXT and
+                                    AUTHOR (paths like "q", "0.q", "quote.body")
 
 A quote is {"text", "lang", "author", "tr": {lang: translation}, "source",
 "shown_at"}: the original in its own language (any) and translations. [lang]
@@ -34,6 +36,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent.parent
 BUNDLED = HERE / "quotes.json"
 VERSES = HERE / "verses.json"
+SUNTZU = HERE / "suntzu.json"
+HAIKU = HERE / "haiku.json"
 STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "omarchy/dailyquote"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "dailyquote"
 CURRENT = STATE / "current.json"
@@ -188,10 +192,54 @@ def pick_offline(recent: set):
     return q
 
 
-def sources() -> set:
+# Categories, each switched on in settings.json "sources": the bundled
+# sayings, the built-in sites, the Bible, Sun Tzu, haiku, and custom sites
+# ("custom": [{"id", "name", "url", "text", "author", "lang"}], on when
+# "api:<id>" is in "sources"). Older settings: "sayings" alone meant the
+# bundled set mixed with the sites.
+CATEGORIES = ("sayings", "online", "bible", "suntzu", "haiku")
+
+
+def settings() -> dict:
     cfg = load(SETTINGS, {})
-    src = set(cfg.get("sources") or ["sayings"]) if isinstance(cfg, dict) else {"sayings"}
-    return src & {"sayings", "bible"} or {"sayings"}
+    return cfg if isinstance(cfg, dict) else {}
+
+
+def sources() -> set:
+    cfg = settings()
+    src = set(cfg.get("sources") or ["sayings", "online"])
+    if "online" not in src and "categories" not in cfg and "sayings" in src:
+        src.add("online")                               # the old mix
+    customs = {f"api:{c.get('id')}" for c in cfg.get("custom", []) if c.get("url")}
+    return (src & (set(CATEGORIES) | customs)) or {"sayings"}
+
+
+def dig(obj, path: str):
+    """A value by a path like "0.q", "quote.body", "[0].q"."""
+    for part in [x for x in path.replace("[", ".").replace("]", "").split(".") if x]:
+        if isinstance(obj, list):
+            obj = obj[int(part)] if part.lstrip("-").isdigit() and len(obj) > int(part) else None
+        elif isinstance(obj, dict):
+            obj = obj.get(part)
+        else:
+            return None
+    return obj
+
+
+def fetch_custom(c: dict):
+    d = http_json(c["url"])
+    text = dig(d, c.get("text") or "quote")
+    author = dig(d, c.get("author") or "author") if c.get("author", "author") else ""
+    if not isinstance(text, str) or not text.strip():
+        return None
+    return {"text": html.unescape(text).strip(), "lang": c.get("lang") or "en", "author": str(author or "").strip(),
+            "source": c.get("name") or "API", "tr": {}}
+
+
+def pick_bundled(path: Path, recent: set):
+    items = [normalize(dict(q)) for q in load(path, []) if q.get("text")]
+    fresh = [q for q in items if key(q) not in recent] or items
+    return dict(random.choice(fresh)) if fresh else None
 
 
 def pick_verse(recent: set):
@@ -223,13 +271,31 @@ def ensure_translation(q: dict, lang: str) -> dict:
 def new_quote(state: dict, lang: str) -> dict:
     recent = set(state.get("recent", []))
     src = sources()
+    customs = {f"api:{c.get('id')}": c for c in settings().get("custom", [])}
     q = None
-    if "bible" in src and ("sayings" not in src or random.random() < 0.5):
-        q = pick_verse(recent)
+    # one of the switched-on categories, each as likely as the others
+    for cat in random.sample(sorted(src), len(src)):
+        try:
+            if cat == "bible":
+                q = pick_verse(recent)
+            elif cat == "suntzu":
+                q = pick_bundled(SUNTZU, recent)
+            elif cat == "haiku":
+                q = pick_bundled(HAIKU, recent)
+            elif cat == "online":
+                q = fetch_online(state, recent, lang)
+            elif cat.startswith("api:") and cat in customs:
+                q = fetch_custom(customs[cat])
+                if q and key(q) in recent:
+                    q = None
+            else:
+                q = pick_offline(recent)
+        except Exception:
+            q = None
+        if q:
+            break
     if q is None:
-        # mix: the multilingual set about half the time, otherwise a site
-        q = None if random.random() < 0.45 else fetch_online(state, recent, lang)
-        q = q or pick_offline(recent)
+        q = pick_offline(recent)
     q = ensure_translation(q, lang)
     q["shown_at"] = int(time.time())
     state["recent"] = (state.get("recent", []) + [key(q)])[-RECENT_MAX:]
@@ -250,6 +316,13 @@ def main() -> int:
     if not isinstance(state, dict):
         state = {}
     cmd = args[0] if args else ""
+    if cmd == "test" and len(args) > 2:
+        try:
+            q = fetch_custom({"url": args[1], "text": args[2], "author": args[3] if len(args) > 3 else "", "name": "test"})
+            print(json.dumps({"ok": bool(q), "quote": q, "error": "" if q else "no text at that path"}, ensure_ascii=False))
+        except Exception as e:
+            print(json.dumps({"ok": False, "error": str(e)[:200]}, ensure_ascii=False))
+        return 0
     if cmd == "next":
         lang = args[1] if len(args) > 1 else "ru"
         q = new_quote(state, lang)

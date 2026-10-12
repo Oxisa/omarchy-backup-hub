@@ -17,6 +17,7 @@ Column {
   readonly property string ff: host ? host.ff : ""
   readonly property real selW: Style.space(176)
   property bool showDesk: true                 // TheNotch shows the widget under Settings → Widgets
+  property bool showLang: true                 // TheNotch has one language for the whole shell
 
   function t(k) { return host ? host.t(k) : k }
   function opt(k, d) { return host ? String(host.opt(k, d)) : d }
@@ -48,6 +49,7 @@ Column {
   }
 
   Section {
+    visible: page.showLang
     title: page.t("set.interface"); icon: "󰗊"
     HubRow {
       title: page.t("set.language"); fg: page.fg; fontFamily: page.ff

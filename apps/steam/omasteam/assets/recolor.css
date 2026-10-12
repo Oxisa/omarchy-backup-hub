@@ -1,0 +1,122 @@
+/* omasteam recolour — maps the Steam client onto the Omarchy palette.
+ *
+ * Colour values come entirely from colors.css (the --o-* variables), which the
+ * Omarchy plugin regenerates on every theme switch; Millennium hot-reloads it,
+ * so Steam retints live with no restart.
+ *
+ * Steam's Panorama class names are hashed and shift between client versions, so
+ * this leans on stable things (element selectors, scrollbars, ::selection) plus
+ * broad [class*="..."] substring matches. It is a solid base tint, not a
+ * pixel-perfect skin — tweak freely in Millennium's live CSS editor / colour
+ * picker. This same file is injected as libraryroot / friends / bigpicture. */
+
+/* ---- base surface + text ------------------------------------------------- */
+html, body,
+.ModalPosition, .ModalPosition_Content,
+[class*="ContextMenu"], [class*="contextMenu"],
+[class*="DialogContent"], [class*="DialogBody"], [class*="_DialogColorTheme"],
+[class*="PanelSection"], [class*="Panel_"], [class*="_Panel"],
+[class*="Background"], [class*="background"],
+[class*="RootMenu"], [class*="SteamPage"] {
+  background-color: var(--o-bg) !important;
+  color: var(--o-fg) !important;
+  border-color: var(--o-border) !important;
+}
+
+/* recessed rails: title bar, side nav, headers */
+[class*="TitleBar"], [class*="titlebar"],
+[class*="_SideBar"], [class*="LibraryContainer"] [class*="_Rail"],
+[class*="Header"][class*="Bar"], [class*="_TopBar"] {
+  background-color: var(--o-bg-dark) !important;
+  color: var(--o-fg-dim) !important;
+}
+
+/* elevated cards / rows / list items */
+[class*="Card"], [class*="_Row"], [class*="ListItem"],
+[class*="Tile"], [class*="Shelf"] [class*="Item"] {
+  background-color: var(--o-elev1) !important;
+}
+
+/* ---- text weight ------------------------------------------------------------ */
+h1, h2, h3, [class*="Title"], [class*="_Heading"], [class*="BoldText"] {
+  color: var(--o-fg-bright) !important;
+}
+[class*="SubTitle"], [class*="Subtitle"], [class*="_Muted"], [class*="Secondary"],
+[class*="DimText"], [class*="_Faded"] {
+  color: var(--o-fg-dim) !important;
+}
+
+/* ---- accent: primary buttons, links, focus, toggles ---------------------- */
+a, [class*="Link"]:not(button) { color: var(--o-accent) !important; }
+a:hover { color: var(--o-accent-hover) !important; }
+
+.DialogButton.Primary, [class*="Button"][class*="Primary"],
+[class*="_GreenBtn"], [class*="Btn_Positive"],
+button[class*="primary"] {
+  background: var(--o-accent) !important;
+  color: var(--o-on-accent) !important;
+  border-color: var(--o-accent) !important;
+}
+.DialogButton.Primary:hover, [class*="Button"][class*="Primary"]:hover {
+  background: var(--o-accent-hover) !important;
+}
+
+/* secondary / plain buttons */
+.DialogButton:not(.Primary), [class*="Button"]:not([class*="Primary"]) {
+  background: var(--o-elev2) !important;
+  color: var(--o-fg) !important;
+  border-color: var(--o-border) !important;
+}
+.DialogButton:not(.Primary):hover { background: var(--o-elev3) !important; }
+
+/* toggles / checkboxes / sliders */
+[class*="Toggle"][class*="On"], [class*="_Checked"],
+[class*="SliderControlAndNotches"] [class*="_Filled"],
+[class*="progress"] [class*="_Bar"] {
+  background-color: var(--o-accent) !important;
+}
+
+/* ---- inputs ------------------------------------------------------------------ */
+input, textarea, select,
+[class*="TextInput"], [class*="_Field"], [class*="SearchBox"] {
+  background-color: var(--o-bg-dark) !important;
+  color: var(--o-fg) !important;
+  border-color: var(--o-border) !important;
+}
+[class*="TextInput"]:focus-within, input:focus, textarea:focus {
+  border-color: var(--o-accent) !important;
+}
+::placeholder { color: var(--o-fg-faint) !important; }
+
+/* ---- selection + scrollbars (very stable) ------------------------------------ */
+::selection { background: var(--o-sel) !important; color: var(--o-sel-fg) !important; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--o-bg-dark) !important; }
+::-webkit-scrollbar-thumb {
+  background: var(--o-border) !important;
+  border-radius: 6px;
+  border: 2px solid var(--o-bg-dark) !important;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--o-border-strong) !important; }
+
+/* ---- misc: tooltips, dividers, hover rows ---------------------------------- */
+[class*="Tooltip"], [class*="_Hint"] {
+  background: var(--o-bg-darker) !important;
+  color: var(--o-fg) !important;
+  border: 1px solid var(--o-border) !important;
+}
+[class*="Divider"], hr { background-color: var(--o-border) !important; border-color: var(--o-border) !important; }
+[class*="_Row"]:hover, [class*="ListItem"]:hover, [class*="ContextMenuItem"]:hover {
+  background-color: var(--o-hover) !important;
+}
+
+/* ---- friends / chat (legacy CEF, different classes) ---------------------- */
+.friendsui-container, .ContextMenu, .FriendMessageContainer,
+.friendsListContainer, .ChatRoomListContainer, .chatDialogs, .Panel {
+  background-color: var(--o-bg) !important;
+  color: var(--o-fg) !important;
+}
+.friendPanel, .titleBar, .ChatRoomListHeader { background-color: var(--o-bg-dark) !important; }
+.online .friendSmallText, .statusFriend .friendSmallText { color: var(--o-green) !important; }
+.speakerButton.on, .btn_green_white_innerfade { background: var(--o-accent) !important; }

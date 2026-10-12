@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "osia.omatele",
+  "name": "omatele",
+  "version": "1.0.0",
+  "author": "osia",
+  "license": "MIT",
+  "description": "A Telegram Desktop palette that follows your Omarchy theme. Regenerates the .tdesktop-palette on every theme switch and offers to apply it, the same way omacord retints Discord.",
+  "kinds": ["service"],
+  "entryPoints": { "service": "Service.qml" }
+}

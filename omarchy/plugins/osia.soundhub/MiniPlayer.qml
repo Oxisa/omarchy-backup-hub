@@ -16,7 +16,8 @@ Item {
   readonly property var player: media ? media.activePlayer : null
   readonly property bool hasTrack: player !== null && !!(player.trackTitle || player.trackArtist)
   readonly property bool playing: player !== null && !!player.isPlaying
-  readonly property string look: host ? String(host.setting("npLook", "vinyl")) : "vinyl"
+  property string forceLook: ""                 // e.g. "cover" where a disc doesn't fit
+  readonly property string look: forceLook || (host ? String(host.setting("npLook", "vinyl")) : "vinyl")
   property color fg: Color.foreground
   property color accent: Color.accent
   property color bgc: Color.background

@@ -1,0 +1,56 @@
+#!/bin/bash
+# omasteam theme-set hook.
+#
+# Run by omarchy-hook at the end of every `omarchy theme set` / `theme refresh`,
+# after the template engine has rendered omasteam-colors.css into the current
+# theme dir. It copies that file into the Millennium "Omarchy" theme as
+# colors.css; Millennium watches the active theme's files and hot-reloads the
+# CSS, so Steam retints live with no restart.
+#
+# Runs inside the theme switch: quiet, never fails hard.
+
+set -uo pipefail
+
+OMASTEAM_DATA="${OMASTEAM_DATA:-$HOME/.local/share/omasteam}"
+[[ -r $OMASTEAM_DATA/lib.sh ]] || exit 0
+# shellcheck source=/dev/null
+. "$OMASTEAM_DATA/lib.sh"
+
+omarchy_theme_dir=$(omasteam_omarchy_theme_dir) || exit 0
+src="$omarchy_theme_dir/$OMASTEAM_RENDERED"
+[[ -f $src ]] || exit 0
+
+theme_dir=$(omasteam_theme_dir)
+out="$theme_dir/colors.css"
+ref="$OMASTEAM_DATA/colors.css"
+mkdir -p "$theme_dir" "$OMASTEAM_DATA"
+
+body=$(
+  printf '/* omasteam - %s - Omarchy theme "%s" */\n' "$(date '+%Y-%m-%d %H:%M')" "${1:-current}"
+  grep -v '{{' "$src"
+)
+[[ -n $body ]] || exit 0
+
+# Unchanged: skip so `omarchy theme refresh` does not churn.
+if [[ -f $ref ]] && printf '%s\n' "$body" | cmp -s - "$ref"; then
+  exit 0
+fi
+
+printf '%s\n' "$body" > "$ref.tmp" 2>/dev/null || exit 0
+mv -f "$ref.tmp" "$ref" 2>/dev/null || { rm -f "$ref.tmp"; exit 0; }
+
+# Drop it into the Millennium theme (atomic rename so Millennium's watcher
+# never sees a half file).
+if printf '%s\n' "$body" > "$out.tmp" 2>/dev/null; then
+  chmod 644 "$out.tmp" 2>/dev/null
+  mv -f "$out.tmp" "$out" 2>/dev/null || rm -f "$out.tmp"
+fi
+
+# First run only: if the Millennium theme has no manifest yet, the install
+# step has not populated it - nudge once (only while Steam is up).
+if [[ ! -f "$theme_dir/theme.json" ]] && omasteam_steam_running; then
+  glyph=$'\U000f0b28'
+  omarchy-notification-send -g "$glyph" "Steam" \
+    "Тема Omarchy обновлена. Включи её: Steam ▸ Millennium ▸ Themes ▸ Omarchy" 2>/dev/null || true
+fi
+exit 0

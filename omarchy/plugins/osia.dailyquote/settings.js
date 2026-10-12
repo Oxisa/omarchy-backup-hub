@@ -12,7 +12,8 @@ var DEFAULTS = {
   lang: "en",
   hideLangs: [],                // original languages not to show (their translation shows instead)
   orientation: "horizontal",    // or "vertical": upright characters in columns
-  sources: ["sayings"]          // "sayings" (quotes) and/or "bible" (verses)
+  sources: ["sayings", "online"], // categories: sayings, online (sites), bible, suntzu, haiku, api:<id>
+  custom: []                    // custom sites: { id, name, url, text, author, lang }
 }
 var SCALE_MIN = 0.6
 var SCALE_MAX = 2.0
@@ -96,9 +97,14 @@ function parse(raw) {
     hideLangs: Array.isArray(o.hideLangs) ? o.hideLangs.filter(function(l) { return typeof l === "string" }) : [],
     orientation: o.orientation === "vertical" ? "vertical" : "horizontal",
     sources: (function() {
-      var src = Array.isArray(o.sources) ? o.sources.filter(function(x) { return x === "sayings" || x === "bible" }) : []
-      return src.length ? src : ["sayings"]
-    })()
+      var known = ["sayings", "online", "bible", "suntzu", "haiku"]
+      var src = Array.isArray(o.sources) ? o.sources.filter(function(x) { return known.indexOf(x) >= 0 || /^api:/.test(x) }) : []
+      // older files: "sayings" alone meant the bundled set and the sites together
+      if (src.indexOf("sayings") >= 0 && src.indexOf("online") < 0 && !o.categories) src.push("online")
+      return src.length ? src : ["sayings", "online"]
+    })(),
+    categories: true,
+    custom: Array.isArray(o.custom) ? o.custom.filter(function(c) { return c && c.id && c.url }) : []
   }
 }
 

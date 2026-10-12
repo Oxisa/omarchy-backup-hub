@@ -1,0 +1,78 @@
+#!/bin/bash
+# omatele theme-set hook.
+#
+# Run by omarchy-hook as `bash <this file> <theme-slug>` at the end of every
+# `omarchy theme set` / `omarchy theme refresh`, after the template engine has
+# rendered omatele.tdesktop-palette into the current theme dir.
+#
+# Telegram Desktop has no headless "apply theme" call. What it DOES have: its
+# theme editor live-watches  <workdir>/tdata/editing-theme.tdesktop-palette
+# and re-applies the palette the instant that file changes. So once you have
+# done the one-time  "Create new theme -> Import existing theme"  with our
+# palette, this hook overwriting that file retints Telegram live - the same
+# idea as omacord with Vencord.
+#
+# Until that one-time import is done, there is no editing-theme file; the hook
+# then just keeps the palette/zip fresh and nudges you once.
+#
+# Runs inside the theme switch: stays quiet, never fails hard.
+
+set -uo pipefail
+
+OMATELE_DATA="${OMATELE_DATA:-$HOME/.local/share/omatele}"
+[[ -r $OMATELE_DATA/lib.sh ]] || exit 0
+# shellcheck source=/dev/null
+. "$OMATELE_DATA/lib.sh"
+
+theme_dir=$(omatele_theme_dir) || exit 0
+src="$theme_dir/$OMATELE_RENDERED"
+[[ -f $src ]] || exit 0
+
+plain="$OMATELE_DATA/$OMATELE_PALETTE_PLAIN"
+zipout="$OMATELE_DATA/$OMATELE_OUT"
+mkdir -p "$OMATELE_DATA"
+
+# Drop any {{ token }} the template engine could not resolve so Telegram falls
+# back to its own default for that key instead of choking on the line.
+body=$(
+  printf '// omatele - %s - Omarchy theme "%s"\n' "$(date '+%Y-%m-%d %H:%M')" "${1:-current}"
+  grep -v '{{' "$src"
+)
+[[ -n $body ]] || exit 0
+
+# Unchanged: skip, so `omarchy theme refresh` does not churn on every run.
+if [[ -f $plain ]] && printf '%s\n' "$body" | cmp -s - "$plain"; then
+  exit 0
+fi
+
+# 1) bare palette (used for the one-time import + the send-to-chat fallback)
+printf '%s\n' "$body" > "$plain.tmp" 2>/dev/null || exit 0
+chmod 644 "$plain.tmp" 2>/dev/null
+mv -f "$plain.tmp" "$plain" 2>/dev/null || { rm -f "$plain.tmp"; exit 0; }
+
+# 2) .tdesktop-theme zip (palette member MUST be colors.tdesktop-palette)
+python3 - "$plain" "$zipout" <<'PY' 2>/dev/null || cp -f "$plain" "$zipout"
+import sys, os, zipfile
+palette, target = sys.argv[1], sys.argv[2]
+with zipfile.ZipFile(target + ".tmp", "w", zipfile.ZIP_DEFLATED) as z:
+    z.write(palette, "colors.tdesktop-palette")
+os.replace(target + ".tmp", target)
+PY
+
+# 3) the live path: overwrite Telegram's editing-theme palette if the one-time
+#    import has been done. Editor open  -> retints now.  Editor closed -> next
+#    Telegram start. Either way, no dialog.
+edit=$(omatele_editing_palette 2>/dev/null || true)
+if [[ -n ${edit:-} && -f $edit ]]; then
+  cp -f "$plain" "$edit.tmp" 2>/dev/null && mv -f "$edit.tmp" "$edit" 2>/dev/null || rm -f "$edit.tmp"
+  exit 0
+fi
+
+# No editing-theme file yet: nudge once (only while Telegram is up).
+if omatele_tg_running; then
+  glyph=$'\U000f051c'
+  omarchy-notification-send -g "$glyph" "Telegram" \
+    "Тема пересобрана. Один раз: Настройки ▸ Чаты ▸ ⋮ ▸ «Создать тему» ▸ «Импорт» ▸ $plain — дальше меняется само." \
+    2>/dev/null || true
+fi
+exit 0
