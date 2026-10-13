@@ -48,12 +48,12 @@ Column {
           border.color: page.accent
           opacity: 0
           SequentialAnimation on scale {
-            running: page.playing
+            running: page.playing && page.visible
             loops: Animation.Infinite
             NumberAnimation { from: 1.0; to: 1.3; duration: 1600; easing.type: Easing.OutQuad }
           }
           SequentialAnimation on opacity {
-            running: page.playing
+            running: page.playing && page.visible
             loops: Animation.Infinite
             NumberAnimation { from: 0.55; to: 0.0; duration: 1600; easing.type: Easing.OutQuad }
           }
@@ -177,7 +177,7 @@ Column {
             color: tile.on ? page.accent : Qt.rgba(page.fg.r, page.fg.g, page.fg.b, 0.08)
             Behavior on color { ColorAnimation { duration: 180 } }
             SequentialAnimation on scale {
-              running: tile.on && page.playing
+              running: tile.on && page.playing && page.visible
               loops: Animation.Infinite
               alwaysRunToEnd: true
               NumberAnimation { from: 1.0; to: 1.08; duration: 1400 + tile.index * 70; easing.type: Easing.InOutSine }

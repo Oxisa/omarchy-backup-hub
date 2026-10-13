@@ -152,11 +152,11 @@ Column {
           border.width: 2; border.color: page.accent
           opacity: 0
           SequentialAnimation on scale {
-            running: page.eqOn; loops: Animation.Infinite
+            running: page.eqOn && page.visible; loops: Animation.Infinite
             NumberAnimation { from: 1.0; to: 1.3; duration: 2200; easing.type: Easing.OutQuad }
           }
           SequentialAnimation on opacity {
-            running: page.eqOn; loops: Animation.Infinite
+            running: page.eqOn && page.visible; loops: Animation.Infinite
             NumberAnimation { from: 0.45; to: 0.0; duration: 2200; easing.type: Easing.OutQuad }
           }
         }

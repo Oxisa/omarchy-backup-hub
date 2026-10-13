@@ -241,7 +241,8 @@ Item {
   }
 
   // ---- layout ----
-  readonly property real gutter: Style.space(56)
+  // narrower gaps in a narrow window (the settings page is ~720 px wide)
+  readonly property real gutter: width < Style.space(900) ? Style.space(36) : Style.space(56)
   readonly property real colW: (width - gutter * 2) / 3
   readonly property real headH: Style.space(32)
   readonly property real barH: Style.space(42)                // presets strip
@@ -1145,8 +1146,9 @@ Item {
               color: Qt.darker(page.fg, 1.3)
               font.family: page.ff; font.pixelSize: Style.font.caption
             }
-            Row {                                          // "sound plays here" + EQ switch
+            Flow {                                         // "sound plays here" + EQ switch, wrapping
               visible: oc.active
+              width: parent.width
               spacing: Style.space(6)
               Rectangle {
                 height: liveText.implicitHeight + Style.space(6)

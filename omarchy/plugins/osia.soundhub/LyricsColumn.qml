@@ -242,7 +242,8 @@ Item {
     anchors.bottom: parent.bottom
     anchors.margins: Style.spacing.md
     height: col.spectrumH
-    levels: col.host && col.host.cava ? col.host.cava.levels : []
+    // no data while hidden: the page is kept alive, the spectrum needn't work
+    levels: col.visible && col.host && col.host.cava ? col.host.cava.levels : []
     style: col.host ? String(col.host.opt("spectrumStyle", "bars")) : "bars"
     color: Qt.rgba(col.accent.r, col.accent.g, col.accent.b, 0.55)
     colorTop: col.accent
