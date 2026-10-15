@@ -1,2 +1,6 @@
-  // Install → Web App asks for the route: through the tunnel or direct.
-  "install.webapp": {"icon":"","label":"Web App","description":"Through the tunnel (Brave) or direct (Chromium)","action":"omarchy-launch-floating-terminal-with-presentation omarchy-webapp-install-routed"},
+  // Install → Web App is a submenu with one row per route: Brave goes through
+  // the tunnel, Chromium goes direct. Dropping the stock action turns the row
+  // into a submenu.
+  "install.webapp": {"icon":"","label":"Web App","description":"Brave (through the tunnel) or Chromium (direct)"},
+  "install.webapp.brave": {"icon":"","label":"Brave","description":"Through the tunnel","aliases":["webapp brave"],"action":"omarchy-launch-floating-terminal-with-presentation omarchy-webapp-install-routed brave"},
+  "install.webapp.chromium": {"icon":"","label":"Chromium","description":"Direct, bypassing the tunnel","aliases":["webapp chromium"],"action":"omarchy-launch-floating-terminal-with-presentation omarchy-webapp-install-routed chromium"}

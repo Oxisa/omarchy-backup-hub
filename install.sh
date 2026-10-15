@@ -142,7 +142,7 @@ route_webapp() {
   local file="$APPS_DIR/$1.desktop" url="$2" route="$3" exec
   [ -f "$file" ] || return 0
   if [ "$route" = "direct" ]; then
-    exec="uwsm-app -- chromium --app=$url"
+    exec="omarchy-launch-webapp-direct \"$url\""
   else
     exec="omarchy-launch-webapp \"$url\""
   fi

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# omarchy:summary=Launch a URL as a web app in Chromium, bypassing the tunnel
+# omarchy:args=<url>
+#
+# The direct-route counterpart of omarchy-launch-webapp. Its name keeps the
+# omarchy-launch-webapp prefix on purpose: omarchy-webapp-remove and the
+# Remove → Web App menu row only list launchers whose Exec mentions it.
+
+exec setsid uwsm-app -- chromium --app="$1" "${@:2}"

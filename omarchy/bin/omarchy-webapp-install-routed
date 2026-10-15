@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # omarchy:summary=Create a web app launcher, choosing whether it opens through the tunnel or directly
-# omarchy:args=[]
+# omarchy:args=[brave|chromium]
 #
 # Interactive front for omarchy-webapp-install with one extra question: the
-# route. "Through the tunnel" uses the default browser (Brave), like any
+# route, skipped when given as the argument (the menu rows pass it). "Through the tunnel" uses the default browser (Brave), like any
 # Omarchy web app; "Direct" launches it in Chromium, which Happ's per-app
 # bypass sends around the tunnel (see README, "Туннель и браузеры").
 # Wired into the Omarchy menu as Install → Web App by install.sh.
@@ -16,7 +16,11 @@ DIRECT="Direct (Chromium)"
 
 echo -e "\e[32mLet's create a new web app you can start with the app launcher.\n\e[0m"
 
-ROUTE=$(gum choose --header "Route" "$TUNNEL" "$DIRECT") || exit 1
+case ${1:-} in
+brave) ROUTE=$TUNNEL ;;
+chromium) ROUTE=$DIRECT ;;
+*) ROUTE=$(gum choose --header "Route" "$TUNNEL" "$DIRECT") || exit 1 ;;
+esac
 APP_NAME=$(gum input --prompt "Name> " --placeholder "My favorite web app") || exit 1
 APP_URL=$(gum input --prompt "URL> " --placeholder "https://example.com") || exit 1
 
@@ -25,11 +29,12 @@ if [[ -z $APP_NAME || -z $APP_URL ]]; then
   exit 1
 fi
 # Same normalisation omarchy-webapp-install applies, needed here because the
-# direct route builds its own Exec line from the URL.
+# direct route builds its own Exec line from the URL. The direct launcher keeps
+# the omarchy-launch-webapp prefix so Remove → Web App lists it.
 [[ $APP_URL =~ ^[a-zA-Z][a-zA-Z0-9+.-]*: ]] || APP_URL="https://$APP_URL"
 
 CUSTOM_EXEC=""
-[[ $ROUTE == "$DIRECT" ]] && CUSTOM_EXEC="uwsm-app -- chromium --app=$APP_URL"
+[[ $ROUTE == "$DIRECT" ]] && CUSTOM_EXEC="omarchy-launch-webapp-direct \"$APP_URL\""
 
 # Empty icon: omarchy fetches the site's own icon. If that fails it exits
 # without creating the launcher, so ask for an icon and try once more.
