@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "osia.nanokvm",
+  "name": "NanoKVM",
+  "version": "1.0.0",
+  "author": "osia",
+  "license": "MIT",
+  "description": "NanoKVM-USB without the internet: one button starts the local server of the nanokvm-usb package and opens the KVM screen in its own window; closing the window stops the server.",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "BarWidget.qml" },
+  "barWidget": {
+    "displayName": "NanoKVM",
+    "description": "A NanoKVM button in the bar, shown while the nanokvm-usb package is installed. Click opens (or focuses) the KVM window, right-click closes it and stops the server.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {},
+    "schema": []
+  }
+}

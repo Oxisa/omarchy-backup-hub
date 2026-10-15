@@ -1,0 +1,89 @@
+#!/bin/bash
+# NanoKVM-USB offline: the nanokvm-usb package (AUR) ships the browser
+# version and nanokvm-usb-browser, which serves it on localhost:8080. This
+# starts that server, opens it in its own Chromium window and stops the
+# server again when the window is closed.
+#
+#   nanokvm status   JSON: {installed, server, window}
+#   nanokvm open     start the server if needed, open or focus the window
+#   nanokvm toggle   open, or close the window (and the server) when open
+#   nanokvm stop     close the window and stop the server
+#
+# Chromium, not Brave: the page reaches the device through WebSerial. A
+# profile of its own keeps the serial/camera permissions for this page apart,
+# and makes Chromium live exactly as long as the window, so the window's unit
+# can stop the server when it exits. The same script lives in
+# omarchy-backup-hub (osia.nanokvm/bin) and in TheNotch (modules/nanokvm/bin);
+# keep both in sync.
+
+PORT=8080
+URL="http://localhost:$PORT"
+SERVER_UNIT=nanokvm-usb-server
+WINDOW_UNIT=nanokvm-usb-window
+PROFILE="${XDG_DATA_HOME:-$HOME/.local/share}/nanokvm-usb/chromium"
+
+installed() { command -v nanokvm-usb-browser >/dev/null; }
+unit_active() { systemctl --user -q is-active "$1"; }
+# The window is found by the pid of the window unit's Chromium: with --app,
+# Chromium ignores --class and names it after the URL.
+window_address() {
+  local pid
+  pid=$(systemctl --user show -p MainPID --value "$WINDOW_UNIT" 2>/dev/null)
+  [ -n "$pid" ] && [ "$pid" != 0 ] || return 0
+  hyprctl clients -j 2>/dev/null | jq -r --argjson p "$pid" 'first(.[] | select(.pid == $p) | .address) // empty'
+}
+focus() { hyprctl dispatch "hl.dsp.focus({ window = 'address:$1' })" >/dev/null; }
+port_busy() { ss -Hltn "sport = :$PORT" 2>/dev/null | grep -q .; }
+fail() { notify-send -a NanoKVM "NanoKVM" "$1" 2>/dev/null; echo "$1" >&2; exit 1; }
+
+status() {
+  local i=false s=false w=false
+  installed && i=true
+  unit_active "$SERVER_UNIT" && s=true
+  unit_active "$WINDOW_UNIT" && w=true
+  printf '{"installed":%s,"server":%s,"window":%s}\n' "$i" "$s" "$w"
+}
+
+start_server() {
+  unit_active "$SERVER_UNIT" && return 0
+  port_busy && fail "Port $PORT is taken by another program"
+  systemd-run --user -q --collect --unit="$SERVER_UNIT" nanokvm-usb-browser || fail "Could not start the server"
+  for _ in $(seq 50); do
+    curl -fsS -o /dev/null "$URL" 2>/dev/null && return 0
+    sleep 0.1
+  done
+  fail "The server did not start on $URL"
+}
+
+open() {
+  installed || fail "nanokvm-usb is not installed (omarchy pkg aur add nanokvm-usb)"
+  local addr
+  if unit_active "$WINDOW_UNIT"; then
+    # Open or still opening: focus it once it shows up.
+    for _ in $(seq 50); do
+      addr=$(window_address)
+      [ -n "$addr" ] && { focus "$addr"; return 0; }
+      sleep 0.1
+    done
+    return 0
+  fi
+  start_server
+  mkdir -p "$PROFILE"
+  systemd-run --user -q --collect --unit="$WINDOW_UNIT" \
+    -p ExecStopPost="systemctl --user stop $SERVER_UNIT" \
+    chromium --user-data-dir="$PROFILE" --no-first-run \
+    --no-default-browser-check --app="$URL" || fail "Could not open the window"
+}
+
+stop() {
+  systemctl --user stop "$WINDOW_UNIT" "$SERVER_UNIT" 2>/dev/null
+  return 0
+}
+
+case "${1:-status}" in
+status) status ;;
+open) open ;;
+toggle) if unit_active "$WINDOW_UNIT"; then stop; else open; fi ;;
+stop) stop ;;
+*) echo "usage: nanokvm status|open|toggle|stop" >&2; exit 2 ;;
+esac

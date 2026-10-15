@@ -26,6 +26,9 @@ MENU_END="// omarchy-backup-hub-menu-end"
 # jq/curl: this script and the hooks; yt-dlp/ffmpeg/wl-clipboard: Omaloader;
 # brave-bin/chromium: the tunnel / direct browser split.
 PACKAGES=(jq curl yt-dlp ffmpeg wl-clipboard brave-bin chromium)
+# AUR. nanokvm-usb: NanoKVM-USB's browser version with a local server, for
+# the osia.nanokvm button (and TheNotch's NanoKVM module).
+AUR_PACKAGES=(nanokvm-usb)
 
 # Keep in sync with the Web-apps section of README.md.
 # Install entries are "Name|URL|route": route "tunnel" opens in the default
@@ -61,6 +64,11 @@ WEBAPPS_INSTALL=(
 
 install_packages() {
   omarchy pkg add "${PACKAGES[@]}"
+  if omarchy pkg aur accessible; then
+    omarchy pkg aur add "${AUR_PACKAGES[@]}" || echo "could not install from the AUR: ${AUR_PACKAGES[*]}"
+  else
+    echo "the AUR is unreachable, skipped: ${AUR_PACKAGES[*]}"
+  fi
   command -v happd >/dev/null || command -v /opt/happ/bin/happd >/dev/null \
     || echo "Happ is not installed: get it from https://happ.su (see README)"
 }
@@ -94,6 +102,8 @@ link_dir_contents() {
 
 enable_plugins() {
   local dir id
+  # Newly linked plugins are unknown to the shell until it rescans.
+  omarchy-shell -q shell rescanPlugins
   for dir in "$REPO_DIR"/omarchy/plugins/*/; do
     [ -f "$dir/manifest.json" ] || continue
     id=$(jq -r '.id' "$dir/manifest.json")
