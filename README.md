@@ -75,7 +75,6 @@ done
 | Figma | https://figma.com | туннель |
 | Excalidraw | https://excalidraw.com | туннель |
 | Draw.io | https://app.diagrams.net | туннель |
-| Monkeytype | https://monkeytype.com | туннель |
 | NanoKVM | https://usbkvm.sipeed.com | туннель |
 | Яндекс Диск | https://disk.yandex.ru | напрямую |
 | Яндекс Телемост | https://telemost.yandex.ru | напрямую |
