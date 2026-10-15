@@ -53,6 +53,7 @@ WEBAPPS_INSTALL=(
   "Excalidraw|https://excalidraw.com|tunnel"
   "Draw.io|https://app.diagrams.net|tunnel"
   "Monkeytype|https://monkeytype.com|tunnel"
+  "NanoKVM|https://usbkvm.sipeed.com|tunnel"
   "Яндекс Диск|https://disk.yandex.ru|direct"
   "Яндекс Телемост|https://telemost.yandex.ru|direct"
   "Яндекс Переводчик|https://translate.yandex.ru|direct"
